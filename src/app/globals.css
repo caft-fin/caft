@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme {
+  --color-on-surface-variant: #554334;
+  --color-tertiary-fixed: #d8e2ff;
+  --color-on-primary-fixed: #2d1600;
+  --color-on-tertiary-fixed-variant: #004493;
+  --color-surface-variant: #e3e2e7;
+  --color-error: #ba1a1a;
+  --color-inverse-primary: #ffb874;
+  --color-on-secondary-container: #6f5c00;
+  --color-surface-dim: #dad9df;
+  --color-on-tertiary-container: #003f8a;
+  --color-on-secondary-fixed-variant: #554600;
+  --color-tertiary-fixed-dim: #adc6ff;
+  --color-primary-fixed: #ffdcbf;
+  --color-primary-fixed-dim: #ffb874;
+  --color-background: #faf9fe;
+  --color-surface-container-lowest: #ffffff;
+  --color-primary: #8c5000;
+  --color-on-tertiary: #ffffff;
+  --color-outline-variant: #dbc2ad;
+  --color-on-error: #ffffff;
+  --color-primary-container: #ff9500;
+  --color-secondary-container: #fdd404;
+  --color-surface-container-highest: #e3e2e7;
+  --color-on-tertiary-fixed: #001a41;
+  --color-surface-container-low: #f4f3f8;
+  --color-on-primary: #ffffff;
+  --color-inverse-on-surface: #f1f0f5;
+  --color-on-primary-container: #643700;
+  --color-on-error-container: #93000a;
+  --color-secondary-fixed: #ffe171;
+  --color-surface-tint: #8c5000;
+  --color-secondary-fixed-dim: #e9c400;
+  --color-secondary: #705d00;
+  --color-tertiary-container: #86aeff;
+  --color-on-secondary-fixed: #221b00;
+  --color-on-background: #1a1b1f;
+  --color-on-secondary: #ffffff;
+  --color-on-surface: #1a1b1f;
+  --color-error-container: #ffdad6;
+  --color-tertiary: #005bc1;
+  --color-on-primary-fixed-variant: #6a3b00;
+  --color-surface-container: #eeedf3;
+  --color-surface-bright: #faf9fe;
+  --color-surface: #faf9fe;
+  --color-outline: #887361;
+  --color-inverse-surface: #2f3034;
+  --color-surface-container-high: #e9e7ed;
+  --color-on-secondary-container: #6f5c00;
+  --color-on-secondary-fixed-variant: #554600;
+
+  --radius-DEFAULT: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Match reference design spacing tokens */
+  --spacing-stack-md: 24px;
+  --spacing-unit: 8px;
+  --spacing-stack-sm: 12px;
+  --spacing-gutter: 24px;
+  --spacing-stack-lg: 48px;
+  --spacing-margin-mobile: 16px;
+  --spacing-container-max: 1280px;
+
+  --font-headline-sm: var(--font-plus-jakarta-sans);
+  --font-display-lg: var(--font-plus-jakarta-sans);
+  --font-label-md: var(--font-inter);
+  --font-headline-md: var(--font-plus-jakarta-sans);
+  --font-button: var(--font-plus-jakarta-sans);
+  --font-body-md: var(--font-inter);
+  --font-body-lg: var(--font-inter);
+
+  /* Match reference design font sizes */
+  --text-headline-sm: 24px;
+  --text-headline-sm--line-height: 1.3;
+  --text-headline-sm--font-weight: 600;
+
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 1.2;
+  --text-label-md--letter-spacing: 0.05em;
+  --text-label-md--font-weight: 600;
+
+  --text-headline-md: 32px;
+  --text-headline-md--line-height: 1.2;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+
+  --text-button: 16px;
+  --text-button--line-height: 1;
+  --text-button--font-weight: 600;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--font-weight: 400;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 400;
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid #F2F2F7;
+  }
+  .sun-gradient {
+    background: linear-gradient(135deg, #ff9500 0%, #ffb874 100%);
+  }
+  .soft-glow {
+    box-shadow: 0 20px 40px rgba(255, 149, 0, 0.08);
+  }
+  .tonal-shadow {
+    box-shadow: 0 10px 20px -5px rgba(255, 149, 0, 0.04);
+  }
+  .chart-grid-line {
+    stroke: #eeedf3;
+    stroke-width: 1;
+  }
+  .nav-sun-gradient {
+    background: linear-gradient(135deg, #ff9500 0%, #fdd404 100%);
+  }
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .otp-input:focus {
+    box-shadow: 0 0 0 2px #ff9500;
+  }
+  .active-nav-bg {
+    background: linear-gradient(90deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 149, 0, 0) 100%);
+  }
+  .shadow-soft {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
+  }
+  .shadow-glow {
+    box-shadow: 0 20px 40px rgba(140, 80, 0, 0.08);
+  }
+}
