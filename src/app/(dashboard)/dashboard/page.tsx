@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { getDashboardStats, getRecentTransactions, type Transaction } from '@/lib/api';
 import {
   TrendingUp, TrendingDown, Wallet, ArrowRight,
-  Landmark, Gem, Download, Globe, Lightbulb, Plus
+  Landmark, Gem, Download, Globe, Lightbulb, Plus, Loader2
 } from 'lucide-react';
 
 const getTransactionIcon = (icon: string) => {
@@ -27,25 +28,37 @@ export default function DashboardPage() {
   const transactions = useStore((state) => state.transactions);
   const updateDashboardStats = useStore((state) => state.updateDashboardStats);
   const setTransactions = useStore((state) => state.setTransactions);
+  const [loading, setLoading] = useState(true);
 
-  // Seed with demo data if store is empty
   useEffect(() => {
-    if (dashboardStats.totalValue === 0) {
-      updateDashboardStats({
-        totalValue: 1284930,
-        profitLoss: 12400,
-        allocation: { domesticEquity: 65, foreignAssets: 25, digitalGold: 10 },
-      });
+    async function fetchData() {
+      try {
+        const [stats, txns] = await Promise.all([
+          getDashboardStats(),
+          getRecentTransactions(),
+        ]);
+        updateDashboardStats(stats);
+        setTransactions(txns.map((tx: Transaction) => ({
+          ...tx,
+          date: tx.subtitle?.split('•')[1]?.trim() ?? '',
+        })));
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-    if (transactions.length === 0) {
-      setTransactions([
-        { id: '1', title: 'HDFC Top 100 Fund', subtitle: 'Mutual Fund SIP • Today', amount: 15000, status: 'Success', icon: 'account_balance', type: 'debit', date: 'Today' },
-        { id: '2', title: 'Digital Gold Purchase', subtitle: 'Commodity • Yesterday', amount: 5000, status: 'Success', icon: 'grid_goldenratio', type: 'debit', date: 'Yesterday' },
-        { id: '3', title: 'Dividend Payout', subtitle: 'Stock Income • 2 days ago', amount: 1240.5, status: 'Settled', icon: 'download', type: 'credit', date: '2 days ago' },
-      ]);
-    }
+    fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (loading && dashboardStats.totalValue === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-gutter">
@@ -75,7 +88,6 @@ export default function DashboardPage() {
               <button className="bg-orange-500/30 border border-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-button text-sm active:scale-95 transition-all">Withdraw</button>
             </div>
           </div>
-          {/* Decorative elements */}
           <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute right-10 top-10 opacity-20">
             <Wallet className="w-28 h-28" />
@@ -92,7 +104,7 @@ export default function DashboardPage() {
                 <span className="font-bold">{dashboardStats.allocation.domesticEquity}%</span>
               </div>
               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${dashboardStats.allocation.domesticEquity}%` }}></div>
+                <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${dashboardStats.allocation.domesticEquity}%` }}></div>
               </div>
             </div>
             <div className="space-y-2">
@@ -101,7 +113,7 @@ export default function DashboardPage() {
                 <span className="font-bold">{dashboardStats.allocation.foreignAssets}%</span>
               </div>
               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${dashboardStats.allocation.foreignAssets}%`, backgroundColor: '#fdd404' }}></div>
+                <div className="h-full rounded-full transition-all" style={{ width: `${dashboardStats.allocation.foreignAssets}%`, backgroundColor: '#fdd404' }}></div>
               </div>
             </div>
             <div className="space-y-2">
@@ -110,7 +122,7 @@ export default function DashboardPage() {
                 <span className="font-bold">{dashboardStats.allocation.digitalGold}%</span>
               </div>
               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${dashboardStats.allocation.digitalGold}%`, backgroundColor: '#86aeff' }}></div>
+                <div className="h-full rounded-full transition-all" style={{ width: `${dashboardStats.allocation.digitalGold}%`, backgroundColor: '#86aeff' }}></div>
               </div>
             </div>
           </div>
@@ -143,32 +155,14 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="h-64 flex items-end justify-between gap-2 px-2">
-              <div className="w-full bg-orange-50 rounded-t-xl relative group h-[40%]">
-                <div className="absolute inset-x-0 bottom-0 bg-orange-500/20 rounded-t-xl h-[60%] transition-all group-hover:h-[80%]"></div>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900 text-white text-[10px] px-2 py-1 rounded transition-opacity whitespace-nowrap">₹13.1L</div>
-              </div>
-              <div className="w-full bg-orange-50 rounded-t-xl relative group h-[55%]">
-                <div className="absolute inset-x-0 bottom-0 bg-orange-500/20 rounded-t-xl h-[65%] transition-all group-hover:h-[85%]"></div>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900 text-white text-[10px] px-2 py-1 rounded transition-opacity whitespace-nowrap">₹14.2L</div>
-              </div>
-              <div className="w-full bg-orange-50 rounded-t-xl relative group h-[68%]">
-                <div className="absolute inset-x-0 bottom-0 bg-orange-500/20 rounded-t-xl h-[70%] transition-all group-hover:h-[90%]"></div>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900 text-white text-[10px] px-2 py-1 rounded transition-opacity whitespace-nowrap">₹15.8L</div>
-              </div>
-              <div className="w-full bg-orange-50 rounded-t-xl relative group h-[82%]">
-                <div className="absolute inset-x-0 bottom-0 bg-orange-500/30 rounded-t-xl h-[75%] transition-all group-hover:h-[95%]"></div>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-gray-900 text-white text-[10px] px-2 py-1 rounded transition-opacity whitespace-nowrap">₹21.4L</div>
-              </div>
-              <div className="w-full bg-orange-500 rounded-t-xl relative group h-[100%] shadow-lg shadow-orange-500/20">
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-100 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">₹28.9L</div>
-              </div>
+              {[40, 55, 68, 82, 100].map((h, i) => (
+                <div key={i} className={`w-full rounded-t-xl relative group ${i === 4 ? 'bg-orange-500 shadow-lg shadow-orange-500/20' : 'bg-orange-50'}`} style={{ height: `${h}%` }}>
+                  {i < 4 && <div className="absolute inset-x-0 bottom-0 bg-orange-500/20 rounded-t-xl h-[65%] transition-all group-hover:h-[85%]"></div>}
+                </div>
+              ))}
             </div>
             <div className="flex justify-between mt-4 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              <span>2024</span>
-              <span>2025</span>
-              <span>2026</span>
-              <span>2028</span>
-              <span>2029</span>
+              <span>2024</span><span>2025</span><span>2026</span><span>2028</span><span>2029</span>
             </div>
           </div>
 
@@ -182,8 +176,8 @@ export default function DashboardPage() {
               {transactions.map((tx) => (
                 <div key={tx.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group">
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${iconBgClass[tx.icon] ?? 'bg-gray-50 text-gray-600'}`}>
-                      {getTransactionIcon(tx.icon)}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${iconBgClass[tx.icon ?? ''] ?? 'bg-gray-50 text-gray-600'}`}>
+                      {getTransactionIcon(tx.icon ?? '')}
                     </div>
                     <div>
                       <p className="font-bold text-sm">{tx.title}</p>
@@ -199,6 +193,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {transactions.length === 0 && (
+                <div className="p-12 text-center text-gray-400">
+                  <p>No transactions yet</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ export function DashboardHeader() {
         <div className="h-8 w-[1px] bg-gray-200 mx-2"></div>
         <div className="flex items-center gap-3 cursor-pointer">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold leading-none">{user?.name || 'Arjun Mehta'}</p>
+            <p className="text-sm font-bold leading-none">{user?.name || 'User'}</p>
             <p className="text-[10px] text-orange-500 font-label-md uppercase tracking-wider">{user?.membershipLevel || 'Premium Member'}</p>
           </div>
           {/* Using img instead of Image because of potential external optimization issues with this long URL */}

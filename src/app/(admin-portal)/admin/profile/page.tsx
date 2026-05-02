@@ -2,8 +2,20 @@
 
 import { Edit2, Mail, MapPin, Shield, MonitorSmartphone, IdCard, KeyRound, UploadCloud, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import { useStore } from '@/store/useStore';
 
 export default function AdminProfilePage() {
+  const user = useStore(state => state.user);
+  const isSuperAdmin = useStore(state => state.isSuperAdmin);
+
+  const displayName = user?.name || 'Admin';
+  const displayEmail = user?.email || 'admin@caft.financial';
+  const nameParts = displayName.split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  const roleLabel = isSuperAdmin ? 'Super Administrator' : 'Administrator';
+  const avatarUrl = user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=f97316&color=fff&bold=true&size=128`;
+
   return (
     <>
       {/* Breadcrumbs / Page Header */}
@@ -21,9 +33,9 @@ export default function AdminProfilePage() {
           <div className="relative group">
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-orange-100">
               <Image 
-                alt="Arjun Mehta" 
+                alt={displayName} 
                 className="w-full h-full object-cover" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvccidtrIbGKmuuIdjAa4zzkolToQqNiQMbnr07olOOUZiWHWkhkDcWwjPAoGYi9nJS056fEnVrX6BWTmE925erL9AEA7EAto4OQyGoFEek3QhebmcciRuWV-TKwZLf1uuatXW-znRqTDdrQrfvPF7pzNEGuL264mgMYJBRexRmAvqJ36zg7GgukEUr-npKf8pJKtr1v-dyRh8HL24d1Lp7IcOB4udUs4AkPTkScls-KqQTJwX3FyM1hfr9Gwh1dLpIPQtNROvqT8"
+                src={avatarUrl}
                 width={128}
                 height={128}
               />
@@ -34,8 +46,10 @@ export default function AdminProfilePage() {
           </div>
           <div className="text-center md:text-left flex-1">
             <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-              <h2 className="font-headline-md text-headline-md text-on-surface">Arjun Mehta</h2>
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-bold uppercase tracking-wider">Administrator</span>
+              <h2 className="font-headline-md text-headline-md text-on-surface">{displayName}</h2>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${isSuperAdmin ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
+                {roleLabel}
+              </span>
             </div>
             <p className="font-body-lg text-body-lg text-gray-500 mb-6 max-w-lg leading-relaxed">
               Overseeing the financial ecosystem of CAFT Finance. Responsible for security protocols and high-level system configurations.
@@ -43,11 +57,11 @@ export default function AdminProfilePage() {
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
                 <Mail className="text-orange-500 w-5 h-5" />
-                <span className="text-sm font-medium">arjun.mehta@caft.financial</span>
+                <span className="text-sm font-medium">{displayEmail}</span>
               </div>
               <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
                 <MapPin className="text-orange-500 w-5 h-5" />
-                <span className="text-sm font-medium">Mumbai, IN</span>
+                <span className="text-sm font-medium">India</span>
               </div>
             </div>
           </div>
@@ -73,12 +87,8 @@ export default function AdminProfilePage() {
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">MacBook Pro 16"</span>
+                <span className="text-gray-500">Current Browser</span>
                 <span className="font-semibold text-on-surface">Current</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">iPhone 15 Pro</span>
-                <span className="text-green-500 font-medium">Active</span>
               </div>
             </div>
           </div>
@@ -103,22 +113,22 @@ export default function AdminProfilePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">First Name</label>
-                <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="text" defaultValue="Arjun" />
+                <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="text" defaultValue={firstName} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Last Name</label>
-                <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="text" defaultValue="Mehta" />
+                <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="text" defaultValue={lastName} />
               </div>
             </div>
             
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Email Address</label>
-              <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="email" defaultValue="arjun.mehta@caft.financial" />
+              <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none" type="email" defaultValue={displayEmail} />
             </div>
             
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Role</label>
-              <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-100 text-gray-500 cursor-not-allowed outline-none" readOnly type="text" defaultValue="Senior System Administrator" />
+              <input className="w-full px-4 py-3 rounded-lg border-none bg-gray-100 text-gray-500 cursor-not-allowed outline-none" readOnly type="text" defaultValue={roleLabel} />
             </div>
             
             <div className="pt-4 flex justify-end gap-4">
@@ -203,17 +213,9 @@ export default function AdminProfilePage() {
           <div className="flex gap-4">
             <div className="mt-1 w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-on-surface">Password changed successfully</p>
-              <p className="text-xs text-gray-500">Security credentials updated following quarterly policy.</p>
-              <span className="text-[10px] uppercase font-bold text-gray-400 mt-2 block">Oct 24, 2023</span>
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <div className="mt-1 w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-on-surface">New login detected from New Delhi</p>
-              <p className="text-xs text-gray-500">System verified login via secondary hardware token.</p>
-              <span className="text-[10px] uppercase font-bold text-gray-400 mt-2 block">Oct 21, 2023</span>
+              <p className="text-sm font-bold text-on-surface">Admin session initialized</p>
+              <p className="text-xs text-gray-500">Secure session started from authorized device.</p>
+              <span className="text-[10px] uppercase font-bold text-gray-400 mt-2 block">Today</span>
             </div>
           </div>
         </div>

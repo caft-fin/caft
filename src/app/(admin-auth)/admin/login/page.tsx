@@ -1,8 +1,49 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, ShieldCheck, AtSign, Key, Info, ArrowRight } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, AtSign, Key, Info, ArrowRight, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { api, ApiError, setTokens } from '@/lib/apiClient';
+import { useStore } from '@/store/useStore';
 
 export default function AdminLoginPage() {
+  const router = useRouter();
+  const login = useStore((state) => state.login);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await api.auth.adminLogin(email, password);
+      const { user, accessToken, refreshToken } = res.data;
+      setTokens(accessToken, refreshToken);
+      login({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+      });
+      router.push('/admin/dashboard');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Unable to connect. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center relative overflow-hidden px-margin-mobile">
@@ -29,8 +70,14 @@ export default function AdminLoginPage() {
               </div>
               <h2 className="font-headline-sm text-headline-sm">Authorized Access Only</h2>
             </div>
+
+            {error && (
+              <div className="mb-stack-md p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {error}
+              </div>
+            )}
             
-            <form className="space-y-stack-md">
+            <form className="space-y-stack-md" onSubmit={handleSubmit}>
               {/* Email Field */}
               <div className="space-y-2">
                 <label className="block font-label-md text-label-md text-on-surface-variant px-1" htmlFor="admin-email">Admin Identifier</label>
@@ -42,15 +89,18 @@ export default function AdminLoginPage() {
                     name="admin-email" 
                     placeholder="admin@caft.financial" 
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
                   />
                 </div>
               </div>
               
-              {/* OTP / Password Field */}
+              {/* Password Field */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center px-1">
                   <label className="font-label-md text-label-md text-on-surface-variant" htmlFor="admin-pass">Access Token</label>
-                  <Link className="text-xs font-label-md text-primary hover:underline" href="#">Request New OTP</Link>
                 </div>
                 <div className="relative">
                   <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant w-5 h-5" />
@@ -60,6 +110,10 @@ export default function AdminLoginPage() {
                     name="admin-pass" 
                     placeholder="••••••••" 
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
                   />
                 </div>
                 <p className="text-[12px] text-on-surface-variant px-1 mt-1 flex items-center gap-1">
@@ -70,10 +124,23 @@ export default function AdminLoginPage() {
               
               {/* Action Button */}
               <div className="pt-stack-sm">
-                <Link href="/admin/dashboard" className="w-full sun-gradient text-on-primary font-button text-button py-4 rounded-lg shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                  Initialize Secure Session
-                  <ArrowRight className="w-[18px] h-[18px]" />
-                </Link>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full sun-gradient text-on-primary font-button text-button py-4 rounded-lg shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : (
+                    <>
+                      Initialize Secure Session
+                      <ArrowRight className="w-[18px] h-[18px]" />
+                    </>
+                  )}
+                </button>
               </div>
             </form>
             

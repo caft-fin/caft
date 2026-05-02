@@ -5,19 +5,21 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  avatarUrl: string;
-  membershipLevel: string;
+  avatarUrl?: string;
+  membershipLevel?: string;
+  role: 'USER' | 'ADMIN';
+  isSuperAdmin?: boolean;
 }
 
 export interface Transaction {
   id: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   amount: number;
   status: string;
-  icon: string;
+  icon?: string;
   type: 'debit' | 'credit';
-  date: string;
+  date?: string;
 }
 
 export interface DashboardStats {
@@ -32,13 +34,15 @@ export interface DashboardStats {
 
 export interface AdminUser {
   id: string;
-  initials: string;
   name: string;
   email: string;
-  status: string;
-  plan: string;
-  investment: number;
-  colorClass: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+  isSuperAdmin: boolean;
+  kycVerified: boolean;
+  plan?: string;
+  createdAt?: string;
 }
 
 interface AppState {
@@ -46,15 +50,20 @@ interface AppState {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (user: User, isAdmin?: boolean) => void;
+  isSuperAdmin: boolean;
+  login: (user: User) => void;
   logout: () => void;
 
   // Dashboard State
   dashboardStats: DashboardStats;
   transactions: Transaction[];
-  
+
   // Admin State
   adminUsers: AdminUser[];
+
+  // Loading States
+  isLoading: boolean;
+  setLoading: (loading: boolean) => void;
 
   // Actions
   addTransaction: (transaction: Transaction) => void;
@@ -79,20 +88,36 @@ export const useStore = create<AppState>()(
       user: null,
       isAuthenticated: false,
       isAdmin: false,
-      login: (user, isAdmin = false) => set({ user, isAuthenticated: true, isAdmin }),
-      logout: () => set({ user: null, isAuthenticated: false, isAdmin: false }),
+      isSuperAdmin: false,
+      login: (user) => set({
+        user,
+        isAuthenticated: true,
+        isAdmin: user.role === 'ADMIN',
+        isSuperAdmin: user.isSuperAdmin ?? false,
+      }),
+      logout: () => {
+        // Clear tokens from localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('caft_access_token');
+          localStorage.removeItem('caft_refresh_token');
+        }
+        set({ user: null, isAuthenticated: false, isAdmin: false, isSuperAdmin: false });
+      },
 
       dashboardStats: initialDashboardStats,
       transactions: [],
       adminUsers: [],
 
-      addTransaction: (transaction) => 
-        set((state) => ({ 
+      isLoading: false,
+      setLoading: (loading) => set({ isLoading: loading }),
+
+      addTransaction: (transaction) =>
+        set((state) => ({
           transactions: [transaction, ...state.transactions],
           dashboardStats: {
             ...state.dashboardStats,
-            totalValue: transaction.type === 'credit' 
-              ? state.dashboardStats.totalValue + transaction.amount 
+            totalValue: transaction.type === 'credit'
+              ? state.dashboardStats.totalValue + transaction.amount
               : state.dashboardStats.totalValue - transaction.amount
           }
         })),
@@ -101,12 +126,18 @@ export const useStore = create<AppState>()(
         set((state) => ({
           dashboardStats: { ...state.dashboardStats, ...stats }
         })),
-        
+
       setAdminUsers: (users) => set({ adminUsers: users }),
       setTransactions: (transactions) => set({ transactions })
     }),
     {
       name: 'caft-storage',
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        isAdmin: state.isAdmin,
+        isSuperAdmin: state.isSuperAdmin,
+      }),
     }
   )
 );

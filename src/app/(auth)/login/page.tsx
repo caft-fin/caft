@@ -1,8 +1,40 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import { GlassCard } from "@/components/ui/GlassCard";
 import Image from 'next/image';
+import { api, ApiError } from '@/lib/apiClient';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await api.auth.login(email);
+      // Store email for the verify page
+      sessionStorage.setItem('caft_login_email', email);
+      router.push('/login/verify');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Unable to connect. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <main className="flex-grow flex items-center justify-center px-gutter py-stack-lg relative z-10">
@@ -20,7 +52,13 @@ export default function LoginPage() {
               <p className="font-body-md text-body-md text-on-surface-variant mt-2">Enter your work email to continue.</p>
             </header>
             
-            <form className="space-y-stack-md" action="/login/verify">
+            {error && (
+              <div className="mb-stack-md p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <form className="space-y-stack-md" onSubmit={handleSubmit}>
               {/* Email Input */}
               <div className="space-y-2">
                 <label className="font-label-md text-label-md text-on-surface-variant block" htmlFor="email">Work Email</label>
@@ -29,16 +67,27 @@ export default function LoginPage() {
                   id="email" 
                   placeholder="name@company.com" 
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               
               {/* CTA Button */}
               <button 
-                className="w-full sun-gradient text-white font-button text-button py-4 rounded-xl shadow-lg hover:translate-y-[-2px] active:scale-[0.98] transition-all duration-200" 
+                className="w-full sun-gradient text-white font-button text-button py-4 rounded-xl shadow-lg hover:translate-y-[-2px] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed" 
                 type="submit"
+                disabled={loading}
               >
-                Continue
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Sending OTP...
+                  </>
+                ) : (
+                  'Continue'
+                )}
               </button>
             </form>
             
@@ -68,7 +117,7 @@ export default function LoginPage() {
           {/* Secondary Action */}
           <div className="text-center mt-stack-md">
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Don't have an account? <Link href="/pricing" className="text-primary font-semibold hover:underline">Contact Sales</Link>
+              New here? Just enter your email — we&apos;ll create your account automatically.
             </p>
           </div>
         </div>

@@ -33,7 +33,7 @@ export default function UserSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Full Name</label>
-                <p className="font-body-md text-on-surface">{user?.name ?? 'Arjun Mehta'}</p>
+                <p className="font-body-md text-on-surface">{user?.name ?? 'User'}</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</label>

@@ -1,23 +1,109 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { useRef } from "react";
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
+import { api, ApiError, setTokens } from '@/lib/apiClient';
+import { useStore } from '@/store/useStore';
 
 export default function LoginVerifyPage() {
+  const router = useRouter();
+  const login = useStore((state) => state.login);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  const handleInput = (e: React.FormEvent<HTMLInputElement>, index: number) => {
-    const value = e.currentTarget.value;
+  useEffect(() => {
+    const storedEmail = sessionStorage.getItem('caft_login_email');
+    if (!storedEmail) {
+      router.replace('/login');
+      return;
+    }
+    setEmail(storedEmail);
+  }, [router]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleInput = (value: string, index: number) => {
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1); // Only keep last char
+    setOtp(newOtp);
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace' && !e.currentTarget.value && index > 0) {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = [...otp];
+    pasted.split('').forEach((char, i) => { newOtp[i] = char; });
+    setOtp(newOtp);
+    inputRefs.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      setError('Please enter all 6 digits');
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const res = await api.auth.verifyOtp(email, otpCode);
+      const { user, accessToken, refreshToken } = res.data;
+      setTokens(accessToken, refreshToken);
+      login({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        membershipLevel: user.membershipLevel,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+      });
+      sessionStorage.removeItem('caft_login_email');
+      router.push('/dashboard');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Verification failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    try {
+      await api.auth.login(email);
+      setResendCooldown(60);
+      setOtp(Array(6).fill(''));
+      setError('');
+    } catch {
+      setError('Failed to resend code. Try again.');
     }
   };
 
@@ -34,38 +120,64 @@ export default function LoginVerifyPage() {
           {/* Header Section */}
           <div className="text-center mb-stack-lg">
             <h1 className="font-headline-md text-headline-md text-on-surface mb-2">Verify Identity - Step 2</h1>
-            <p className="font-body-md text-body-md text-on-surface-variant">We've sent a 6-digit secure code to your registered email. Please enter it below to continue.</p>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              We&apos;ve sent a 6-digit secure code to <strong className="text-on-surface">{email}</strong>. Please enter it below to continue.
+            </p>
           </div>
           
+          {error && (
+            <div className="mb-stack-md p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 text-center">
+              {error}
+            </div>
+          )}
+
           {/* OTP Card */}
           <GlassCard className="shadow-[0_10px_20px_-5px_rgba(0,0,0,0.04)] rounded-xl p-8">
-            <form className="space-y-stack-md" action="/dashboard">
-              <div className="flex justify-between gap-2 md:gap-3">
+            <form className="space-y-stack-md" onSubmit={handleSubmit}>
+              <div className="flex justify-between gap-2 md:gap-3" onPaste={handlePaste}>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <input 
                     key={i}
                     ref={(el) => { inputRefs.current[i] = el; }}
-                    onChange={(e) => handleInput(e, i)}
+                    value={otp[i]}
+                    onChange={(e) => handleInput(e.target.value, i)}
                     onKeyDown={(e) => handleKeyDown(e, i)}
                     className="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-sm font-headline-sm bg-[#F9F9F9] border-none rounded-lg outline-none focus:bg-white focus:ring-2 focus:ring-primary-container transition-all duration-200" 
                     maxLength={1} 
                     required 
                     type="text"
+                    inputMode="numeric"
+                    disabled={loading}
                   />
                 ))}
               </div>
               <div className="pt-4">
                 <button 
-                  className="w-full bg-gradient-to-r from-primary-container to-orange-600 text-white py-4 rounded-xl font-button text-button shadow-lg shadow-orange-500/20 hover:translate-y-[-2px] active:scale-95 transition-all duration-200" 
+                  className="w-full bg-gradient-to-r from-primary-container to-orange-600 text-white py-4 rounded-xl font-button text-button shadow-lg shadow-orange-500/20 hover:translate-y-[-2px] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60" 
                   type="submit"
+                  disabled={loading}
                 >
-                  Sign In Securely
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Sign In Securely'
+                  )}
                 </button>
               </div>
               <div className="text-center pt-2">
                 <p className="font-body-md text-label-md text-on-surface-variant">
-                  Didn't receive the code?{' '}
-                  <button type="button" className="text-orange-600 font-semibold hover:underline decoration-2 underline-offset-4 transition-all">Resend Code</button>
+                  Didn&apos;t receive the code?{' '}
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0}
+                    className="text-orange-600 font-semibold hover:underline decoration-2 underline-offset-4 transition-all disabled:text-gray-400 disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                  </button>
                 </p>
               </div>
             </form>
