@@ -302,7 +302,7 @@ export default function DangerZonePage() {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              {record.id && (
+                              {!!record.id && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ table: selectedTable, id: String(record.id) }); }}
                                   className="p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
@@ -388,7 +388,7 @@ export default function DangerZonePage() {
               </div>
             </div>
             <div className="p-4 border-t border-gray-200 flex justify-between items-center shrink-0 bg-gray-50">
-              {viewRecord.id && (
+              {!!viewRecord.id && (
                 <button
                   onClick={() => {
                     setViewRecord(null);
