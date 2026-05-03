@@ -34,8 +34,6 @@ export default function DangerZonePage() {
     }
   }, [isAuthenticated, isSuperAdmin, router]);
 
-  useEffect(() => { loadTables(); }, []);
-
   const loadTables = async () => {
     try {
       setLoading(true);
@@ -48,6 +46,8 @@ export default function DangerZonePage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => { loadTables(); }, []);
 
   const loadRecords = useCallback(async (tableName: string, page = 1) => {
     try {

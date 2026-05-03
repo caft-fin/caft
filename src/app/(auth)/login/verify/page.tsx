@@ -83,7 +83,9 @@ export default function LoginVerifyPage() {
         isSuperAdmin: user.isSuperAdmin,
       });
       sessionStorage.removeItem('caft_login_email');
-      router.push('/dashboard');
+      const redirectPath = sessionStorage.getItem('caft_post_login_redirect') || '/dashboard';
+      sessionStorage.removeItem('caft_post_login_redirect');
+      router.push(redirectPath);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

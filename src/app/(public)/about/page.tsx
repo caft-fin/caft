@@ -23,7 +23,7 @@ export default function AboutPage() {
           <GlassCard className="p-8 rounded-xl tonal-shadow">
             <h2 className="font-headline-md text-2xl mb-4">Our Mission</h2>
             <p className="text-on-surface-variant font-body-md mb-6 leading-relaxed">
-              At CAFT Financial, we believe that accessible financial strategies and clear market insights shouldn't be limited to the ultra-wealthy. We are building intelligent tools to distill complex financial data into beautiful, actionable insights that help you stay ahead of the curve.
+              At CAFT Financial, we believe that accessible financial strategies and clear market insights shouldn&apos;t be limited to the ultra-wealthy. We are building intelligent tools to distill complex financial data into beautiful, actionable insights that help you stay ahead of the curve.
             </p>
             <div className="flex gap-4 items-center">
               <div className="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center">

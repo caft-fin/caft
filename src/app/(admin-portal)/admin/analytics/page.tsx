@@ -8,11 +8,6 @@ export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<AdminStatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   const loadStats = async () => {
     try {
       setLoading(true);
@@ -25,6 +20,10 @@ export default function AdminAnalyticsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);

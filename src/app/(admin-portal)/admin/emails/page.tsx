@@ -9,11 +9,6 @@ export default function AdminEmailsPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -30,6 +25,10 @@ export default function AdminEmailsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {

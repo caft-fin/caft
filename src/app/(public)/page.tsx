@@ -1,8 +1,52 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { GlassCard } from "@/components/ui/GlassCard";
 import Image from "next/image";
-import { PlayCircle, TrendingUp, LineChart, ArrowRight, Wallet, Users, CheckCircle2 } from "lucide-react";
+import { PlayCircle, TrendingUp, LineChart, ArrowRight, Wallet, Users, CheckCircle2, Package } from "lucide-react";
+import { api } from '@/lib/apiClient';
+import type { PlanItem } from '@/lib/apiClient';
+
+interface BannerCompany { name: string; color?: string; }
+
+const RANDOM_COLORS = ['#E67E22', '#2ECC71', '#3498DB', '#9B59B6', '#E74C3C', '#1ABC9C', '#F39C12', '#2980B9'];
+
+function getYouTubeId(url: string): string {
+  if (!url) return '';
+  const match = url.match(/(?:embed\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : '';
+}
 
 export default function LandingPage() {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [products, setProducts] = useState<PlanItem[]>([]);
+
+  useEffect(() => {
+    api.public.settings().then(res => setSettings(res.data)).catch(() => { });
+    api.plans.list().then(res => {
+      const publicProducts = res.data.filter((p: PlanItem) => p.itemCategory === 'DIGITAL_PRODUCT' || p.itemCategory === 'PHYSICAL_PRODUCT');
+      setProducts(publicProducts);
+    }).catch(() => {});
+  }, []);
+
+  const heroMediaType = settings.heroMediaType || 'image';
+  const heroImageUrl = settings.heroImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPWflEdFmq-FdXTJaUewd_lkgKdgwgkibu3V5UkqiFXBnTXcOCSm4j7Mp_vP8bBivkfwLV445WuaCMLn68rgkNebUnGWbo0_c7OhAZMzCg3iygPIh20BFOvdlO2_BsjrYGFas3aAqmSO7bFOBDvARLKH118fOXtPUlwXODGjl5MVuxdhrHT05-q-VizWJ9ZdTyCjiI01bJwg7eibNXR88lFTsYegUWpZvk8l8w5hzjlOA44ZyAdYBr6jKTfh2Ya7BpFNtRazDzi4U';
+  const heroVideoUrl = settings.heroVideoUrl || '';
+
+  // Banner
+  const bannerCompanies: BannerCompany[] = (() => {
+    try { return JSON.parse(settings.bannerCompanies || '[]'); } catch { return []; }
+  })();
+  const defaultCompanies: BannerCompany[] = [
+    { name: 'FINTECH+' }, { name: 'SECURE.IO' }, { name: 'GLOBALCAP' }, { name: 'VISTA BANK' }, { name: 'ORBITAL' },
+  ];
+  const companies = bannerCompanies.length > 0 ? bannerCompanies : defaultCompanies;
+  const colorMode = settings.bannerColorMode || 'same';
+  const defaultColor = settings.bannerDefaultColor || '';
+  const textSize = settings.bannerTextSize || '2xl';
+  const fontFamily = settings.bannerFontFamily || 'inherit';
+
   return (
     <>
       {/* Hero Section */}
@@ -16,7 +60,7 @@ export default function LandingPage() {
               Modern Wealth Management
             </span>
             <h1 className="font-display-lg text-display-lg text-on-surface mb-stack-md">
-              Your future is bright. Let's make it <span className="text-primary-container">brilliant.</span>
+              Your future is bright. Let&apos;s make it <span className="text-primary-container">brilliant.</span>
             </h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant mb-stack-lg max-w-lg">
               Accessible financial strategies and market insights designed for young professionals who want their money to work as hard as they do.
@@ -33,14 +77,47 @@ export default function LandingPage() {
           </div>
           <div className="relative">
             <GlassCard className="p-4 rounded-3xl soft-glow transform rotate-2">
-              <div className="relative w-full h-[500px]">
-                <Image 
-                  alt="Professional woman looking optimistic" 
-                  className="rounded-2xl object-cover" 
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPWflEdFmq-FdXTJaUewd_lkgKdgwgkibu3V5UkqiFXBnTXcOCSm4j7Mp_vP8bBivkfwLV445WuaCMLn68rgkNebUnGWbo0_c7OhAZMzCg3iygPIh20BFOvdlO2_BsjrYGFas3aAqmSO7bFOBDvARLKH118fOXtPUlwXODGjl5MVuxdhrHT05-q-VizWJ9ZdTyCjiI01bJwg7eibNXR88lFTsYegUWpZvk8l8w5hzjlOA44ZyAdYBr6jKTfh2Ya7BpFNtRazDzi4U"
-                />
+              <div className="relative w-full h-[500px] rounded-2xl overflow-hidden">
+                {heroMediaType === 'video' && heroVideoUrl ? (
+                  videoPlaying ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${getYouTubeId(heroVideoUrl)}?autoplay=1`}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Hero video"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setVideoPlaying(true)}
+                      className="absolute inset-0 w-full h-full group cursor-pointer"
+                      aria-label="Play video"
+                    >
+                      {/* YouTube thumbnail */}
+                      <img
+                        src={`https://img.youtube.com/vi/${getYouTubeId(heroVideoUrl)}/maxresdefault.jpg`}
+                        alt="Video thumbnail"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      {/* Dark overlay */}
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                      {/* Play button */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-full bg-white/90 shadow-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <PlayCircle className="w-12 h-12 text-orange-600" />
+                        </div>
+                      </div>
+                    </button>
+                  )
+                ) : (
+                  <Image
+                    alt="Professional woman looking optimistic"
+                    className="rounded-2xl object-cover"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    src={heroImageUrl}
+                  />
+                )}
               </div>
               <div className="absolute -bottom-6 -left-6 glass-card p-6 rounded-2xl shadow-xl max-w-xs animate-bounce z-20">
                 <div className="flex items-center gap-3 mb-2">
@@ -58,16 +135,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Social Proof — Dynamic */}
       <section className="py-stack-md bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <p className="text-center font-label-md text-on-surface-variant mb-8 uppercase tracking-widest text-xs">Trusted by forward-thinking institutions</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
-            <span className="text-2xl font-bold font-display-lg">FINTECH+</span>
-            <span className="text-2xl font-bold font-display-lg">SECURE.IO</span>
-            <span className="text-2xl font-bold font-display-lg">GLOBALCAP</span>
-            <span className="text-2xl font-bold font-display-lg">VISTA BANK</span>
-            <span className="text-2xl font-bold font-display-lg">ORBITAL</span>
+          <div className="flex flex-wrap justify-center items-center gap-12 transition-all duration-700">
+            {companies.map((c, i) => {
+              const color = colorMode === 'random'
+                ? (c.color || RANDOM_COLORS[i % RANDOM_COLORS.length])
+                : (defaultColor || undefined);
+              return (
+                <span
+                  key={i}
+                  className={`text-${textSize} font-bold font-display-lg`}
+                  style={{ color, fontFamily: fontFamily !== 'inherit' ? fontFamily : undefined }}
+                >
+                  {c.name}
+                </span>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -77,10 +163,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-headline-md text-headline-md text-on-surface mb-4">Intelligent tools for the modern investor</h2>
-            <p className="text-on-surface-variant font-body-md max-w-2xl mx-auto">We've distilled complex financial data into beautiful, actionable insights that help you stay ahead of the curve.</p>
+            <p className="text-on-surface-variant font-body-md max-w-2xl mx-auto">We&apos;ve distilled complex financial data into beautiful, actionable insights that help you stay ahead of the curve.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-            {/* Featured Tool */}
             <div className="md:col-span-2 bg-white rounded-3xl p-stack-md border border-outline-variant/30 soft-glow overflow-hidden relative group">
               <div className="relative z-10 flex flex-col h-full justify-between">
                 <div>
@@ -94,8 +179,6 @@ export default function LandingPage() {
               </div>
               <div className="absolute top-0 right-0 w-1/2 h-full bg-orange-50/50 rounded-l-full transform translate-x-1/4 group-hover:translate-x-0 transition-transform duration-700"></div>
             </div>
-            
-            {/* Portfolio Tracking */}
             <div className="bg-secondary-container rounded-3xl p-stack-md flex flex-col justify-between">
               <div>
                 <Wallet className="w-10 h-10 text-on-secondary-container mb-4" />
@@ -109,8 +192,6 @@ export default function LandingPage() {
                 <div className="w-1/4 bg-on-secondary-container h-full rounded-t-md"></div>
               </div>
             </div>
-
-            {/* Referral System */}
             <div className="bg-primary-container rounded-3xl p-stack-md text-white flex flex-col justify-between">
               <div>
                 <Users className="w-10 h-10 mb-4" />
@@ -119,33 +200,25 @@ export default function LandingPage() {
               </div>
               <div className="mt-8 flex -space-x-4">
                 <div className="w-12 h-12 rounded-full border-4 border-primary-container bg-gray-200 relative overflow-hidden">
-                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBd6fNm1HY5YbOmdSxv5UkE_75oVG4rxvDaWfqNPOZ29B6YxSq7SE08VQuGdU_5UYExCmjL3UvqMOzJXPyiRRhQomwc4mMIjVcpjuGRdTQ4g2Wb1J3qaDolIAb2aO2PRbloPVNtzxYe5NBBtEXVYFfJfAbl31YpwZmBRG7k5LsGUO_tRdv2vbsHuqoeOQqSLeKQpsKVqP5qKyBeHfGAj2XSTxo8daIx3VrMimsw7jd2WuxyOmOactMwVWjSMFqegfBsLf3WVHFF1u4" alt="Portrait"/>
+                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBd6fNm1HY5YbOmdSxv5UkE_75oVG4rxvDaWfqNPOZ29B6YxSq7SE08VQuGdU_5UYExCmjL3UvqMOzJXPyiRRhQomwc4mMIjVcpjuGRdTQ4g2Wb1J3qaDolIAb2aO2PRbloPVNtzxYe5NBBtEXVYFfJfAbl31YpwZmBRG7k5LsGUO_tRdv2vbsHuqoeOQqSLeKQpsKVqP5qKyBeHfGAj2XSTxo8daIx3VrMimsw7jd2WuxyOmOactMwVWjSMFqegfBsLf3WVHFF1u4" alt="Portrait" />
                 </div>
                 <div className="w-12 h-12 rounded-full border-4 border-primary-container bg-gray-200 relative overflow-hidden">
-                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA16aakLULlvN1Sz-mGL6Ru7hUfHrFb-Mo6xtQrbsZ1ONLX4UyBkgInZjqfOWEyPJpGJaSaZxmiUXhZ6fzYYEFSKLcFHYePMpGMjd2LTW60VC2sFmSVQfYbd7Q-c_JbDTD1p9B9TQv_Ee421Xhnh_ZxC2nvk8gYB0a7ZKXL7dVTmGOhkiyJyRsOXr8Ng-jKNVR7HtFAx6fJTKxs9GhlkFqhvdd0an4RxjNc5gF9YiSt8p7pEjhuS7yCC_edZWD45vxIu-xNHd5olkk" alt="Portrait"/>
+                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA16aakLULlvN1Sz-mGL6Ru7hUfHrFb-Mo6xtQrbsZ1ONLX4UyBkgInZjqfOWEyPJpGJaSaZxmiUXhZ6fzYYEFSKLcFHYePMpGMjd2LTW60VC2sFmSVQfYbd7Q-c_JbDTD1p9B9TQv_Ee421Xhnh_ZxC2nvk8gYB0a7ZKXL7dVTmGOhkiyJyRsOXr8Ng-jKNVR7HtFAx6fJTKxs9GhlkFqhvdd0an4RxjNc5gF9YiSt8p7pEjhuS7yCC_edZWD45vxIu-xNHd5olkk" alt="Portrait" />
                 </div>
                 <div className="w-12 h-12 rounded-full border-4 border-primary-container bg-gray-200 relative overflow-hidden">
-                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6VD6jDBw165UxjGZHpY9oI8sznNF-PUv3hQn1PWEIGw_rqIH12xRntvgOWvQsqIYUsxY7favfX1KTuV2qqK2PUyfP3XYU8mNTx7tm_6XisDU8FuDwyskaC6Ee8ifkAUBAjP5dLiGfYFvFm15NvI-5YXfD13sbPJzr6u-1IPVu58eeqEbupCb70EuBUzVRtQell1H4iealH0ani-iKNwP7nGx4oFFDoWFs1KKsdGlKqv7T7_9uO9Gv3PEUlGLa_GHbea61MfMOg0s" alt="Portrait"/>
+                  <Image className="object-cover" fill sizes="48px" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6VD6jDBw165UxjGZHpY9oI8sznNF-PUv3hQn1PWEIGw_rqIH12xRntvgOWvQsqIYUsxY7favfX1KTuV2qqK2PUyfP3XYU8mNTx7tm_6XisDU8FuDwyskaC6Ee8ifkAUBAjP5dLiGfYFvFm15NvI-5YXfD13sbPJzr6u-1IPVu58eeqEbupCb70EuBUzVRtQell1H4iealH0ani-iKNwP7nGx4oFFDoWFs1KKsdGlKqv7T7_9uO9Gv3PEUlGLa_GHbea61MfMOg0s" alt="Portrait" />
                 </div>
                 <div className="w-12 h-12 rounded-full border-4 border-primary-container bg-white flex items-center justify-center text-primary-container font-bold">+12</div>
               </div>
             </div>
-
-            {/* Market Insights */}
             <div className="md:col-span-2 bg-white rounded-3xl p-stack-md border border-outline-variant/30 soft-glow">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full">
                 <div>
                   <h3 className="font-headline-sm text-headline-sm mb-4">Referral Dashboard</h3>
-                  <p className="text-on-surface-variant font-body-md mb-6">Track your network's growth and claim your credits instantly. Transparent, fast, and rewarding.</p>
+                  <p className="text-on-surface-variant font-body-md mb-6">Track your network&apos;s growth and claim your credits instantly. Transparent, fast, and rewarding.</p>
                   <ul className="space-y-3">
-                    <li className="flex items-center gap-3 font-body-md text-on-surface">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                      Unlimited friends invited
-                    </li>
-                    <li className="flex items-center gap-3 font-body-md text-on-surface">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                      ₹0 Account management fees
-                    </li>
+                    <li className="flex items-center gap-3 font-body-md text-on-surface"><CheckCircle2 className="w-5 h-5 text-primary" />Unlimited friends invited</li>
+                    <li className="flex items-center gap-3 font-body-md text-on-surface"><CheckCircle2 className="w-5 h-5 text-primary" />₹0 Account management fees</li>
                   </ul>
                 </div>
                 <div className="bg-surface-container-low rounded-2xl p-6 border border-orange-100">
@@ -173,20 +246,11 @@ export default function LandingPage() {
             <div className="lg:w-1/2">
               <span className="text-primary font-bold uppercase tracking-widest text-xs mb-4 block">Visualized Wealth</span>
               <h2 className="font-headline-md text-headline-md text-on-surface mb-6">Predict your potential with high-fidelity projections</h2>
-              <p className="text-body-lg text-on-surface-variant mb-stack-md">Don't just save—strategize. Our projection engine simulates thousands of market scenarios to show you where you'll be in 3 months or 10 years.</p>
+              <p className="text-body-lg text-on-surface-variant mb-stack-md">Don&apos;t just save—strategize. Our projection engine simulates thousands of market scenarios to show you where you&apos;ll be in 3 months or 10 years.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-stack-md">
-                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm">
-                  <p className="text-xs text-on-surface-variant uppercase mb-1">3 Months</p>
-                  <p className="text-xl font-bold text-primary-container">+4.2%</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm">
-                  <p className="text-xs text-on-surface-variant uppercase mb-1">1 Year</p>
-                  <p className="text-xl font-bold text-primary-container">+18.5%</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm">
-                  <p className="text-xs text-on-surface-variant uppercase mb-1">5 Years</p>
-                  <p className="text-xl font-bold text-primary-container">+112%</p>
-                </div>
+                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm"><p className="text-xs text-on-surface-variant uppercase mb-1">3 Months</p><p className="text-xl font-bold text-primary-container">+4.2%</p></div>
+                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm"><p className="text-xs text-on-surface-variant uppercase mb-1">1 Year</p><p className="text-xl font-bold text-primary-container">+18.5%</p></div>
+                <div className="p-4 rounded-2xl bg-white border border-orange-50 text-center shadow-sm"><p className="text-xs text-on-surface-variant uppercase mb-1">5 Years</p><p className="text-xl font-bold text-primary-container">+112%</p></div>
               </div>
               <button className="px-8 py-4 rounded-xl text-button font-button text-white sun-gradient shadow-xl hover:opacity-90 transition-all">Create Wealth Plan</button>
             </div>
@@ -199,34 +263,72 @@ export default function LandingPage() {
                     <span className="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-bold">Stable</span>
                   </div>
                 </div>
-                {/* Mockup Chart */}
                 <div className="h-64 flex items-end gap-2 px-2">
-                  <div className="w-1/12 h-[20%] bg-orange-100 rounded-t-lg transition-all hover:h-[30%]"></div>
-                  <div className="w-1/12 h-[25%] bg-orange-100 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[30%] bg-orange-200 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[38%] bg-orange-200 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[45%] bg-orange-300 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[52%] bg-orange-300 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[65%] bg-orange-400 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[75%] bg-orange-400 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[82%] bg-orange-500 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[90%] bg-orange-500 rounded-t-lg"></div>
-                  <div className="w-1/12 h-[95%] bg-primary-container rounded-t-lg"></div>
-                  <div className="w-1/12 h-full bg-primary-container rounded-t-lg relative">
-                    <div className="absolute -top-12 -left-8 bg-on-primary-container text-white text-xs p-2 rounded shadow-lg whitespace-nowrap">Target: ₹2.4M</div>
-                  </div>
+                  {[20, 25, 30, 38, 45, 52, 65, 75, 82, 90, 95, 100].map((h, i) => (
+                    <div key={i} className={`w-1/12 rounded-t-lg transition-all`} style={{ height: `${h}%`, background: `hsl(${25 + i * 3}, ${60 + i * 3}%, ${70 - i * 3}%)` }}>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex justify-between mt-4 text-xs text-on-surface-variant font-bold uppercase tracking-wider">
-                  <span>Today</span>
-                  <span>2026</span>
-                  <span>2028</span>
-                  <span>2030</span>
+                  <span>Today</span><span>2026</span><span>2028</span><span>2030</span>
                 </div>
               </GlassCard>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Products Section */}
+      {products.length > 0 && (
+        <section className="py-stack-lg max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-primary font-bold uppercase tracking-widest text-xs mb-4 block">Premium Catalog</span>
+            <h2 className="font-headline-md text-headline-md text-on-surface mb-4">Discover Our Products</h2>
+            <p className="text-on-surface-variant font-body-md max-w-2xl mx-auto">Explore exclusive digital and physical products to elevate your financial journey.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {products.map((product) => (
+              <div key={product.id} className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group flex flex-col">
+                <div className="h-48 w-full bg-gray-100 relative overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <Package className="w-12 h-12" />
+                    </div>
+                  )}
+                  {product.bannerBadge && (
+                    <span className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                      {product.bannerBadge}
+                    </span>
+                  )}
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1">{product.description}</p>
+                  
+                  <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                    <div className="font-bold text-gray-900 text-lg">
+                      {product.isOneTime && product.oneTimePrice ? (
+                        `₹${(product.oneTimePrice / 100).toLocaleString()}`
+                      ) : product.pricing && product.pricing.length > 0 ? (
+                        `₹${(product.pricing[0].price / 100).toLocaleString()}`
+                      ) : (
+                        'Free'
+                      )}
+                    </div>
+                    <button className="text-sm font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-colors">
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-stack-lg max-w-7xl mx-auto px-6">

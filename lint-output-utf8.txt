@@ -1,0 +1,294 @@
+﻿
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\analytics\page.tsx
+  25:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\analytics\page.tsx:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     loadStats();
+     |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  26 |   }, []);
+  27 |
+  28 |   const formatCurrency = (amount: number) =>  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\danger-zone\page.tsx
+  50:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\danger-zone\page.tsx:50:21
+  48 |   };
+  49 |
+> 50 |   useEffect(() => { loadTables(); }, []);
+     |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |
+  52 |   const loadRecords = useCallback(async (tableName: string, page = 1) => {
+  53 |     try {                  react-hooks/set-state-in-effect
+  72:24  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\danger-zone\page.tsx:72:24
+  70 |
+  71 |   useEffect(() => {
+> 72 |     if (selectedTable) loadRecords(selectedTable);
+     |                        ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  73 |   }, [selectedTable, loadRecords]);
+  74 |
+  75 |   const handleDelete = async () => {  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\dashboard\actions.ts
+  8:9  warning  'token' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\dashboard\page.tsx
+  38:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\dashboard\page.tsx:38:5
+  36 |
+  37 |   useEffect(() => {
+> 38 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |   }, []);
+  40 |
+  41 |   const formatCurrency = (amount: number) =>  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\emails\page.tsx
+  30:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\emails\page.tsx:30:5
+  28 |
+  29 |   useEffect(() => {
+> 30 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  31 |   }, []);
+  32 |
+  33 |   const getStatusBadge = (status: string) => {  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\management\page.tsx
+  16:10  warning  'roleFilter' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  16:22  warning  'setRoleFilter' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  43:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\management\page.tsx:43:21
+  41 |   }, [search, statusFilter]);
+  42 |
+> 43 |   useEffect(() => { loadUsers(); }, [loadUsers]);
+     |                     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  44 |
+  45 |   const handleCreateUser = async () => {
+  46 |     setFormError('');  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\products\page.tsx
+    4:113  warning  'ChevronDown' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   46:21   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\products\page.tsx:46:21
+  44 |   }, []);
+  45 |
+> 46 |   useEffect(() => { fetchPlans(); }, [fetchPlans]);
+     |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, fetchAnalytics]);
+  48 |
+  49 |   const handleSave = async (data: CreatePlanData) => {                                          react-hooks/set-state-in-effect
+   47:46   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\products\page.tsx:47:46
+  45 |
+  46 |   useEffect(() => { fetchPlans(); }, [fetchPlans]);
+> 47 |   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, fetchAnalytics]);
+     |                                              ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  48 |
+  49 |   const handleSave = async (data: CreatePlanData) => {
+  50 |     setSaving(true);  react-hooks/set-state-in-effect
+   55:17   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   67:47   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  190:23   warning  'plans' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  211:5    warning  Expected an assignment or function call and instead saw an expression                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-expressions
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\reviews\page.tsx
+  25:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\reviews\page.tsx:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     fetchReviews();
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  26 |   }, [fetchReviews]);
+  27 |
+  28 |   const updateStatus = async (id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED') => {  react-hooks/set-state-in-effect
+  32:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  42:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  79:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @next/next/no-img-element
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\settings\page.tsx
+    7:49  warning  'CheckCircle2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+    8:3   warning  'Circle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+    8:11  warning  'Shield' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+    8:19  warning  'ShieldCheck' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+    8:32  warning  'FileJson' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+    8:52  warning  'Copy' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   46:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\settings\page.tsx:46:21
+  44 |   }, []);
+  45 |
+> 46 |   useEffect(() => { load(); }, [load]);
+     |                     ^^^^ Avoid calling setState() directly within an effect
+  47 |
+  48 |   const save = async (data: Record<string, string | boolean | undefined>) => {
+  49 |     setSaving(true);                                                                                          react-hooks/set-state-in-effect
+   80:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\settings\page.tsx:80:13
+  78 |     const raw = settings[`page_${editingPage}`];
+  79 |     if (raw) {
+> 80 |       try { setPageContent(JSON.parse(raw)); } catch { setPageContent({ title: '', sections: [] }); }
+     |             ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  81 |     } else {
+  82 |       setPageContent({ title: '', sections: [] });
+  83 |     }  react-hooks/set-state-in-effect
+  199:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @next/next/no-img-element
+  280:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @next/next/no-img-element
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\subscriptions\page.tsx
+    4:113  warning  'ChevronDown' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   46:21   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\subscriptions\page.tsx:46:21
+  44 |   }, []);
+  45 |
+> 46 |   useEffect(() => { fetchPlans(); }, [fetchPlans]);
+     |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, fetchAnalytics]);
+  48 |
+  49 |   const handleSave = async (data: CreatePlanData) => {                                          react-hooks/set-state-in-effect
+   47:46   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(admin-portal)\admin\subscriptions\page.tsx:47:46
+  45 |
+  46 |   useEffect(() => { fetchPlans(); }, [fetchPlans]);
+> 47 |   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, fetchAnalytics]);
+     |                                              ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  48 |
+  49 |   const handleSave = async (data: CreatePlanData) => {
+  50 |     setSaving(true);  react-hooks/set-state-in-effect
+   55:17   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+   67:47   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  188:23   warning  'plans' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  209:5    warning  Expected an assignment or function call and instead saw an expression                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-expressions
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(auth)\login\verify\page.tsx
+  27:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(auth)\login\verify\page.tsx:27:5
+  25 |       return;
+  26 |     }
+> 27 |     setEmail(storedEmail);
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  28 |   }, [router]);
+  29 |
+  30 |   // Resend cooldown timer  react-hooks/set-state-in-effect
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(dashboard)\dashboard\analytics\page.tsx
+  3:22  warning  'TrendingDown' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(public)\page.tsx
+   97:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  294:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\app\(public)\pricing\page.tsx
+  4:33  warning  'Zap' is defined but never used    @typescript-eslint/no-unused-vars
+  4:38  warning  'Crown' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\components\layout\DashboardHeader.tsx
+   5:8   warning  'Image' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  39:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\components\layout\Header.tsx
+  31:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\dusha\OneDrive\Desktop\caft\frontend\src\components\ui\ImageUploader.tsx
+  67:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+Γ£û 47 problems (18 errors, 29 warnings)
+

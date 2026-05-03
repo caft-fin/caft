@@ -71,14 +71,17 @@ const MOCK_TRANSACTIONS: Transaction[] = [
 export async function getPricingPlans(): Promise<PricingPlan[]> {
   try {
     const res = await api.plans.list();
-    return res.data.map((plan: PlanItem) => ({
-      id: plan.slug,
-      name: plan.name,
-      price: plan.priceMonthly / 100, // Convert paise to rupees
-      description: plan.description,
-      features: plan.features.map((f) => ({ name: f.name, included: f.included })),
-      isPopular: plan.isPopular,
-    }));
+    return res.data.map((plan: PlanItem) => {
+      const monthlyPricing = plan.pricing?.find(p => p.billingCycle === 'MONTHLY');
+      return {
+        id: plan.slug,
+        name: plan.name,
+        price: monthlyPricing ? monthlyPricing.price / 100 : 0,
+        description: plan.description,
+        features: plan.features.map((f) => ({ name: f.name, included: f.included })),
+        isPopular: plan.isPopular,
+      };
+    });
   } catch {
     console.warn('Backend unavailable, using mock pricing plans');
     return MOCK_PRICING_PLANS;

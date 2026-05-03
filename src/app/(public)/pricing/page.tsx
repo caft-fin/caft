@@ -1,208 +1,312 @@
-import { CheckCircle2, XCircle, Minus, Check } from 'lucide-react';
-import Image from 'next/image';
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { CheckCircle2, XCircle, Zap, Crown, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { getIconComponent } from '@/components/admin/subscriptions/IconPicker';
+import { api, BILLING_CYCLE_LABELS, BILLING_CYCLE_SHORT } from '@/lib/apiClient';
+import type { BillingCycleType } from '@/lib/apiClient';
+import { openRazorpayCheckout, openRazorpayPayment } from '@/lib/razorpay';
+import { useStore } from '@/store/useStore';
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  planType: 'FREE' | 'PAID';
+  bannerBadge?: string | null;
+  isOneTime: boolean;
+  oneTimePrice?: number | null;
+  freeTrialEnabled: boolean;
+  freeTrialDays?: number | null;
+  discountPercent?: number | null;
+  discountLabel?: string | null;
+  features: { name: string; included: boolean; icon?: string | null }[];
+  pricing: { billingCycle: string; price: number }[];
+  isPopular: boolean;
+}
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { user, isAuthenticated } = useStore();
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState<string | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<BillingCycleType>('MONTHLY');
+
+  useEffect(() => {
+    fetch('/api/pricing').then(r => r.json()).then(data => {
+      setPlans(Array.isArray(data) ? data : []);
+      // Determine the best default cycle
+      if (Array.isArray(data) && data.length > 0) {
+        const allCycles = new Set<string>();
+        data.forEach((p: PricingPlan) => p.pricing?.forEach(pr => allCycles.add(pr.billingCycle)));
+        if (allCycles.has('MONTHLY')) setSelectedCycle('MONTHLY');
+        else if (allCycles.has('ANNUALLY')) setSelectedCycle('ANNUALLY');
+        else if (allCycles.size > 0) setSelectedCycle(Array.from(allCycles)[0] as BillingCycleType);
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  // Get all available billing cycles across plans
+  const availableCycles: BillingCycleType[] = [];
+  const cycleSet = new Set<string>();
+  plans.forEach(p => p.pricing?.forEach(pr => { if (!cycleSet.has(pr.billingCycle) && pr.billingCycle !== 'ONETIME') { cycleSet.add(pr.billingCycle); availableCycles.push(pr.billingCycle as BillingCycleType); } }));
+  const cycleOrder: BillingCycleType[] = ['DAILY','WEEKLY','BIWEEKLY','MONTHLY','QUARTERLY','HALFYEARLY','ANNUALLY'];
+  availableCycles.sort((a, b) => cycleOrder.indexOf(a) - cycleOrder.indexOf(b));
+
+  const recurringPlans = plans.filter(p => !p.isOneTime);
+  const oneTimePlans = plans.filter(p => p.isOneTime);
+
+  const getPriceForCycle = (plan: PricingPlan, cycle: BillingCycleType) => {
+    const pr = plan.pricing?.find(p => p.billingCycle === cycle);
+    return pr ? pr.price : null;
+  };
+ 
+  const handleSubscribe = async (plan: PricingPlan, cycle: BillingCycleType) => {
+    if (!isAuthenticated) {
+      sessionStorage.setItem('caft_post_login_redirect', '/pricing');
+      router.push('/login');
+      return;
+    }
+ 
+    if (plan.planType === 'FREE') {
+      router.push('/dashboard');
+      return;
+    }
+ 
+    setSubscribing(plan.id);
+    try {
+      // 1. Create subscription/order in backend
+      const res = await api.subscriptions.create(plan.id, cycle);
+      const data = res.data as any;
+ 
+      if (plan.isOneTime && cycle === 'ONETIME') {
+        const { orderId, amount, currency } = data;
+        await openRazorpayPayment({
+          orderId,
+          planName: plan.name,
+          amount,
+          currency,
+          userEmail: user?.email || '',
+          userName: user?.name || '',
+          onSuccess: (paymentId, ordId, signature) => {
+            console.log('One-time Payment Successful:', { paymentId, ordId, signature });
+            router.push('/dashboard?payment=success');
+          },
+          onFailure: (error) => {
+            console.error('One-time Payment Failed:', error);
+            alert(error);
+          }
+        });
+      } else {
+        const { subscriptionId } = data;
+        const price = getPriceForCycle(plan, cycle) || 0;
+        const discountedPrice = (plan.discountPercent ?? 0) > 0 
+          ? Math.round(price * (1 - (plan.discountPercent || 0) / 100)) 
+          : price;
+ 
+        await openRazorpayCheckout({
+          subscriptionId,
+          planName: plan.name,
+          amount: discountedPrice,
+          userEmail: user?.email || '',
+          userName: user?.name || '',
+          onSuccess: (paymentId, subId, signature) => {
+            console.log('Subscription Successful:', { paymentId, subId, signature });
+            router.push('/dashboard?payment=success');
+          },
+          onFailure: (error) => {
+            console.error('Subscription Failed:', error);
+            alert(error);
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      alert(error.message || 'Failed to initiate subscription');
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
   return (
     <>
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative pt-24 pb-16 px-6 text-center overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 opacity-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-container rounded-full blur-[100px]"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-container rounded-full blur-[100px]"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-container rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-container rounded-full blur-[100px]" />
         </div>
         <h1 className="font-display-lg text-display-lg text-on-surface mb-stack-sm">Plans for every financial journey.</h1>
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-stack-lg">
-          Choose the level of precision and insight that fits your wealth goals. From personal savings to institutional wealth management.
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-12">
+          Choose the level of precision and insight that fits your wealth goals.
         </p>
-        
-        {/* Toggle (Monthly/Yearly) */}
-        <div className="flex items-center justify-center gap-4 mb-16">
-          <span className="font-label-md text-label-md text-on-surface-variant">Monthly</span>
-          <button className="w-12 h-6 bg-primary-container rounded-full relative p-1 transition-colors">
-            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-          </button>
-          <span className="font-label-md text-label-md text-on-surface">Yearly <span className="text-primary font-bold">(Save 20%)</span></span>
-        </div>
+
+        {/* Cycle Toggle */}
+        {availableCycles.length > 1 && (
+          <div className="flex items-center justify-center gap-1 bg-gray-100 rounded-2xl p-1 w-fit mx-auto mb-16">
+            {availableCycles.map(cycle => (
+              <button key={cycle} onClick={() => setSelectedCycle(cycle)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${selectedCycle === cycle ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                {BILLING_CYCLE_LABELS[cycle]}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Pricing Cards Bento Grid */}
-      <section className="max-w-7xl mx-auto px-6 pb-stack-lg">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-          {/* Basic Plan */}
-          <div className="bg-white rounded-xl p-8 border border-gray-100 tonal-shadow flex flex-col hover:translate-y-[-4px] transition-transform duration-300">
-            <div className="mb-6">
-              <span className="font-label-md text-label-md text-primary uppercase tracking-widest bg-primary-fixed/30 px-3 py-1 rounded-full">Essentials</span>
-              <h3 className="font-headline-sm text-headline-sm mt-4">Basic</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold font-headline-md">₹0</span>
-                <span className="text-on-surface-variant font-body-md">/mo</span>
-              </div>
-              <p className="text-on-surface-variant font-body-md mt-4">Perfect for individuals starting their financial tracking journey.</p>
-            </div>
-            <ul className="flex-grow space-y-4 mb-8">
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Personal Expense Tracking</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Basic Savings Goals</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Monthly Statements</span>
-              </li>
-              <li className="flex items-center gap-3 text-gray-400">
-                <XCircle className="w-5 h-5" />
-                <span className="font-body-md">Market Insights</span>
-              </li>
-            </ul>
-            <button className="w-full py-4 rounded-xl text-button font-button text-white sun-gradient shadow-xl hover:translate-y-[-2px] transition-all active:scale-95 duration-200">
-              Get Started
-            </button>
-          </div>
+      {/* Plans Grid */}
+      <section className="max-w-7xl mx-auto px-6 pb-24">
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">Loading plans...</div>
+        ) : recurringPlans.length === 0 && oneTimePlans.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">No plans available yet.</div>
+        ) : (
+          <>
+            <div className={`grid grid-cols-1 gap-8 ${recurringPlans.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : recurringPlans.length >= 3 ? 'md:grid-cols-3' : 'max-w-md mx-auto'}`}>
+              {recurringPlans.map(plan => {
+                const price = plan.planType === 'FREE' ? 0 : getPriceForCycle(plan, selectedCycle);
+                const hasDiscount = (plan.discountPercent ?? 0) > 0 && price !== null;
+                const discountedPrice = hasDiscount ? Math.round(price! * (1 - (plan.discountPercent || 0) / 100)) : price;
 
-          {/* Pro Plan (Featured) */}
-          <div className="sun-gradient rounded-xl p-8 tonal-shadow flex flex-col relative scale-105 z-10 shadow-[0_20px_40px_-10px_rgba(255,149,0,0.3)]">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-on-surface text-white px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase">Most Popular</div>
-            <div className="mb-6">
-              <span className="font-label-md text-label-md text-white/90 uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">Growth</span>
-              <h3 className="font-headline-sm text-headline-sm text-white mt-4">Pro</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold font-headline-md text-white">₹999</span>
-                <span className="text-white/80 font-body-md">/mo</span>
-              </div>
-              <p className="text-white/90 font-body-md mt-4">Advanced tools for serious investors and family wealth growth.</p>
-            </div>
-            <ul className="flex-grow space-y-4 mb-8">
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-white w-5 h-5" />
-                <span className="font-body-md text-white">Everything in Basic</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-white w-5 h-5" />
-                <span className="font-body-md text-white">Stock Portfolio Sync</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-white w-5 h-5" />
-                <span className="font-body-md text-white">AI-Powered Market Insights</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-white w-5 h-5" />
-                <span className="font-body-md text-white">Tax Optimization Reports</span>
-              </li>
-            </ul>
-            <button className="w-full py-4 rounded-lg bg-white text-orange-600 font-button text-button shadow-lg hover:shadow-xl transition-all active:scale-95 duration-200">
-              Subscribe Now
-            </button>
-          </div>
+                return (
+                  <div key={plan.id} className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300 hover:translate-y-[-4px] ${
+                    plan.isPopular
+                      ? 'sun-gradient text-white shadow-2xl scale-[1.03]'
+                      : 'bg-white border border-gray-100 shadow-sm'
+                  }`}>
+                    {/* Badge */}
+                    {plan.bannerBadge && (
+                      <span className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                        plan.isPopular ? 'bg-white text-orange-600' : 'bg-orange-100 text-orange-700'
+                      }`}>{plan.bannerBadge}</span>
+                    )}
 
-          {/* Institutional Plan */}
-          <div className="bg-white rounded-xl p-8 border border-gray-100 tonal-shadow flex flex-col hover:translate-y-[-4px] transition-transform duration-300">
-            <div className="mb-6">
-              <span className="font-label-md text-label-md text-primary uppercase tracking-widest bg-primary-fixed/30 px-3 py-1 rounded-full">Enterprise</span>
-              <h3 className="font-headline-sm text-headline-sm mt-4">Institutional</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold font-headline-md">₹4,999</span>
-                <span className="text-on-surface-variant font-body-md">/mo</span>
-              </div>
-              <p className="text-on-surface-variant font-body-md mt-4">Comprehensive suite for wealth managers and large organizations.</p>
-            </div>
-            <ul className="flex-grow space-y-4 mb-8">
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Unlimited Portfolios</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Custom API Access</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Dedicated Advisor Support</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary w-5 h-5" />
-                <span className="font-body-md">Audit-Ready Compliance</span>
-              </li>
-            </ul>
-            <button className="w-full py-4 rounded-lg border-2 border-primary text-primary font-button text-button hover:bg-orange-50 transition-colors active:scale-95 duration-200">
-              Contact Sales
-            </button>
-          </div>
-        </div>
-      </section>
+                    <div className="mb-6">
+                      <h3 className={`text-xl font-bold mb-2 ${plan.isPopular ? '' : 'text-gray-900'}`}>{plan.name}</h3>
+                      <div className="flex items-baseline gap-2">
+                        {hasDiscount && <span className="text-lg line-through opacity-50">₹{price}</span>}
+                        <span className="text-4xl font-black">{plan.planType === 'FREE' ? 'Free' : price !== null ? `₹${discountedPrice}` : '—'}</span>
+                        {price !== null && plan.planType !== 'FREE' && (
+                          <span className={`text-sm ${plan.isPopular ? 'text-white/70' : 'text-gray-400'}`}>{BILLING_CYCLE_SHORT[selectedCycle]}</span>
+                        )}
+                      </div>
+                      {hasDiscount && plan.discountLabel && (
+                        <span className={`inline-block mt-2 text-xs font-bold px-2 py-0.5 rounded-full ${plan.isPopular ? 'bg-white/20' : 'bg-pink-100 text-pink-700'}`}>
+                          {plan.discountLabel}
+                        </span>
+                      )}
+                      {plan.freeTrialEnabled && plan.freeTrialDays && (
+                        <span className={`inline-block mt-2 ml-1 text-xs font-bold px-2 py-0.5 rounded-full ${plan.isPopular ? 'bg-white/20' : 'bg-teal-100 text-teal-700'}`}>
+                          {plan.freeTrialDays}-day free trial
+                        </span>
+                      )}
+                      <p className={`text-sm mt-3 ${plan.isPopular ? 'text-white/80' : 'text-gray-500'}`}>{plan.description}</p>
+                    </div>
 
-      {/* Feature Comparison Table */}
-      <section className="max-w-4xl mx-auto px-6 py-stack-lg">
-        <h2 className="font-headline-md text-headline-md text-center mb-12">Detailed Comparison</h2>
-        <div className="glass-panel rounded-2xl overflow-hidden border border-outline-variant/30 tonal-shadow">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-low">
-                <th className="p-6 font-headline-sm text-sm uppercase tracking-wider">Feature</th>
-                <th className="p-6 font-headline-sm text-sm uppercase tracking-wider text-center">Basic</th>
-                <th className="p-6 font-headline-sm text-sm uppercase tracking-wider text-center text-primary">Pro</th>
-                <th className="p-6 font-headline-sm text-sm uppercase tracking-wider text-center">Inst.</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              <tr>
-                <td className="p-6 font-body-md">Active Accounts</td>
-                <td className="p-6 text-center font-body-md">2</td>
-                <td className="p-6 text-center font-body-md text-primary font-bold">10</td>
-                <td className="p-6 text-center font-body-md">Unlimited</td>
-              </tr>
-              <tr>
-                <td className="p-6 font-body-md">Real-time Data</td>
-                <td className="p-6 text-center"><Minus className="text-gray-300 w-6 h-6 mx-auto" /></td>
-                <td className="p-6 text-center"><Check className="text-primary w-6 h-6 mx-auto" /></td>
-                <td className="p-6 text-center"><Check className="text-primary w-6 h-6 mx-auto" /></td>
-              </tr>
-              <tr>
-                <td className="p-6 font-body-md">Wealth Coaching</td>
-                <td className="p-6 text-center"><Minus className="text-gray-300 w-6 h-6 mx-auto" /></td>
-                <td className="p-6 text-center font-body-md">Monthly</td>
-                <td className="p-6 text-center font-body-md">Priority 24/7</td>
-              </tr>
-              <tr>
-                <td className="p-6 font-body-md">Custom Dashboards</td>
-                <td className="p-6 text-center"><Minus className="text-gray-300 w-6 h-6 mx-auto" /></td>
-                <td className="p-6 text-center font-body-md">Limited</td>
-                <td className="p-6 text-center font-body-md">Full Access</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                    <ul className="flex-grow space-y-3 mb-8">
+                      {plan.features.map((f, i) => {
+                        const Icon = f.included ? (getIconComponent(f.icon) || CheckCircle2) : XCircle;
+                        return (
+                          <li key={i} className={`flex items-center gap-3 text-sm ${
+                            f.included ? '' : (plan.isPopular ? 'opacity-40' : 'text-gray-400')
+                          }`}>
+                            <Icon className="w-4 h-4 flex-shrink-0" />
+                            <span>{f.name}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <button 
+                      onClick={() => handleSubscribe(plan, selectedCycle)}
+                      disabled={subscribing !== null}
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        plan.isPopular
+                          ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
+                          : 'sun-gradient text-white shadow-md hover:opacity-90'
+                      }`}
+                    >
+                      {subscribing === plan.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          {plan.planType === 'FREE' ? 'Get Started Free' : 'Subscribe Now'}
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* One-Time Plans */}
+            {oneTimePlans.length > 0 && (
+              <div className="mt-20">
+                <div className="text-center mb-12">
+                  <span className="text-xs font-bold text-orange-600 uppercase tracking-widest">Lifetime Access</span>
+                  <h2 className="font-headline-md text-headline-md text-on-surface mt-2">One-Time Purchase</h2>
+                </div>
+                <div className={`grid grid-cols-1 gap-8 max-w-4xl mx-auto ${oneTimePlans.length >= 2 ? 'md:grid-cols-2' : ''}`}>
+                  {oneTimePlans.map(plan => (
+                    <div key={plan.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-8 border border-indigo-100 flex flex-col">
+                      {plan.bannerBadge && <span className="self-start px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 mb-4">{plan.bannerBadge}</span>}
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className="text-4xl font-black text-indigo-700">₹{plan.oneTimePrice?.toLocaleString()}</span>
+                        <span className="text-sm text-indigo-400">one-time</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mb-6">{plan.description}</p>
+                      <ul className="flex-grow space-y-3 mb-8">
+                        {plan.features.map((f, i) => {
+                          const Icon = getIconComponent(f.icon) || CheckCircle2;
+                          return <li key={i} className="flex items-center gap-3 text-sm text-gray-700"><Icon className="w-4 h-4 text-indigo-500" />{f.name}</li>;
+                        })}
+                      </ul>
+                      <button 
+                        onClick={() => handleSubscribe(plan, 'ONETIME')}
+                        disabled={subscribing !== null}
+                        className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        {subscribing === plan.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            Buy Lifetime Access <Sparkles className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* Trust Section */}
-      <section className="bg-surface-container-lowest py-20">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 items-center gap-16">
-          <div>
-            <h2 className="font-headline-md text-headline-md mb-6">Why trust CAFT Financial?</h2>
-            <p className="font-body-lg text-body-lg text-on-surface-variant mb-8">
-              We prioritize your security and growth with bank-level encryption and unbiased financial algorithms.
-            </p>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="flex flex-col gap-2">
-                <span className="text-3xl font-bold text-primary">₹500Cr+</span>
-                <span className="text-label-md text-on-surface-variant uppercase">Assets Tracked</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-3xl font-bold text-primary">50k+</span>
-                <span className="text-label-md text-on-surface-variant uppercase">Active Users</span>
-              </div>
-            </div>
+      <section className="py-24 max-w-7xl mx-auto px-6">
+        <div className="rounded-[40px] sun-gradient p-12 lg:p-20 text-white text-center relative overflow-hidden shadow-2xl">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-64 h-64 border-[40px] border-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 border-[60px] border-white rounded-full translate-x-1/2 translate-y-1/2" />
           </div>
-          <div className="rounded-2xl overflow-hidden tonal-shadow h-64 md:h-96">
-            <Image 
-              alt="Financial growth visualization" 
-              className="w-full h-full object-cover" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkLUmFnLHYVvRRE9bfd6uXDbpb4G_H8G46DybWiMZ7vY9xbnPgU9RyAbF2Hkt9lcdHckr5_dQvw_jxxTrbj62OpbIJ2ZxeAAa7OiHVlzvcwmHeaDESkzAGypeD6ldMeCRT2sFPA92qX5OL13I9w-zyOhvtkMNbXWv0ZykzzF7Spr0j-LaLsD0NDfN5eLawIKxmwxa-_2csK_7jOGThAUElZMsY3nmaKluGQRwqmvGLKYjmE6mTCP0gUJLlLWatmp0nvxlR12abUz4" 
-              width={600}
-              height={400}
-            />
+          <div className="relative z-10">
+            <h2 className="font-display-lg text-display-lg mb-6">Start building your legacy today</h2>
+            <p className="text-white/90 text-body-lg max-w-xl mx-auto mb-10">
+              Join thousands of investors who trust CAFT Financial for smarter wealth management.
+            </p>
+            <Link 
+              href="/login"
+              className="inline-block bg-white text-primary px-10 py-4 rounded-xl font-button shadow-xl hover:scale-105 transition-all"
+            >
+              Get Started Free
+            </Link>
           </div>
         </div>
       </section>

@@ -214,13 +214,14 @@ export const api = {
   // ── Plans (Public) ──────────────────────────────────
   plans: {
     list: () => apiFetch<PlanItem[]>('/plans'),
+    bundles: () => apiFetch<PlanBundleItem[]>('/plans/bundles'),
   },
 
   // ── Subscriptions ───────────────────────────────────
   subscriptions: {
     active: () => apiFetch<SubscriptionInfo | null>('/subscriptions/active'),
-    create: (planId: string, billingCycle: 'MONTHLY' | 'YEARLY') =>
-      apiFetch<{ subscriptionId: string; shortUrl: string }>('/subscriptions', {
+    create: (planId: string, billingCycle: BillingCycleType) =>
+      apiFetch<{ subscriptionId: string; shortUrl: string }>('/subscriptions/create', {
         method: 'POST',
         body: JSON.stringify({ planId, billingCycle }),
       }),
@@ -259,21 +260,67 @@ export const api = {
     settings: () => apiFetch<Record<string, string>>('/admin/settings'),
     updateSettings: (data: Record<string, string | boolean>) =>
       apiFetch('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
+    // ── Reviews (Admin) ────────────────────────────────
+    reviews: {
+      all: () => apiFetch<ReviewItem[]>('/reviews/admin'),
+      update: (id: string, data: { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; comment?: string; rating?: number }) =>
+        apiFetch<ReviewItem>(`/reviews/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) => apiFetch(`/reviews/admin/${id}`, { method: 'DELETE' }),
+    },
+    
+    // ── Uploads (Admin) ────────────────────────────────
+    getUploadPresignedUrl: (filename: string, contentType: string) =>
+      apiFetch<{ uploadUrl: string; publicUrl: string; fileKey: string }>('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ filename, contentType }),
+      }),
+
+    // ── Plans/Products (Admin) ─────────────────────────
     plans: {
       all: () => apiFetch<PlanItem[]>('/plans/admin'),
       get: (id: string) => apiFetch<PlanItem>(`/plans/admin/${id}`),
       create: (data: CreatePlanData) =>
-        apiFetch('/plans/admin', { method: 'POST', body: JSON.stringify(data) }),
+        apiFetch<PlanItem>('/plans/admin', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<CreatePlanData>) =>
-        apiFetch(`/plans/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      updatePricing: (id: string, priceMonthly: number, priceYearly: number) =>
-        apiFetch(`/plans/admin/${id}/pricing`, {
-          method: 'PATCH',
-          body: JSON.stringify({ priceMonthly, priceYearly }),
-        }),
+        apiFetch<PlanItem>(`/plans/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      duplicate: (id: string) =>
+        apiFetch<PlanItem>(`/plans/admin/${id}/duplicate`, { method: 'POST' }),
       delete: (id: string) =>
         apiFetch(`/plans/admin/${id}`, { method: 'DELETE' }),
+      bulkDiscount: (planIds: string[], discountPercent: number, discountLabel?: string) =>
+        apiFetch('/plans/admin/bulk-discount', {
+          method: 'POST',
+          body: JSON.stringify({ planIds, discountPercent, discountLabel }),
+        }),
+      bulkRemoveDiscount: (planIds: string[]) =>
+        apiFetch('/plans/admin/bulk-discount', {
+          method: 'DELETE',
+          body: JSON.stringify({ planIds }),
+        }),
     },
+
+    // ── Bundles (Admin) ──────────────────────────────────
+    bundles: {
+      all: () => apiFetch<PlanBundleItem[]>('/plans/admin/bundles'),
+      create: (data: CreateBundleData) =>
+        apiFetch<PlanBundleItem>('/plans/admin/bundles', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<CreateBundleData>) =>
+        apiFetch<PlanBundleItem>(`/plans/admin/bundles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        apiFetch(`/plans/admin/bundles/${id}`, { method: 'DELETE' }),
+    },
+
+    // ── Analytics (Admin) ──────────────────────────────────
+    analytics: {
+      subscriptions: () => apiFetch<SubscriptionAnalytics>('/admin/analytics/subscriptions'),
+      revenue: () => apiFetch<RevenueAnalytics>('/admin/analytics/revenue'),
+      churn: () => apiFetch<ChurnAnalytics>('/admin/analytics/churn'),
+      growth: () => apiFetch<GrowthAnalytics>('/admin/analytics/growth'),
+      rates: () => apiFetch<SubscriptionRate[]>('/admin/analytics/rates'),
+    },
+
+    // ── Campaigns ──────────────────────────────────────
     campaigns: {
       list: () => apiFetch<CampaignItem[]>('/emails/campaigns'),
       create: (data: CreateCampaignData) =>
@@ -300,9 +347,63 @@ export const api = {
         apiFetch(`/admin/danger/tables/${table}/${id}`, { method: 'DELETE' }),
     },
   },
+
+  // ── Uploads (Admin) ──────────────────────────────────
+  upload: {
+    getPresignedUrl: (filename: string, contentType: string) =>
+      apiFetch<{ uploadUrl: string; publicUrl: string; fileKey: string }>('/upload/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify({ filename, contentType }),
+      }),
+  },
+
+  // ── Reviews ──────────────────────────────────────────
+  reviews: {
+    getForPlan: (planId: string) => 
+      apiFetch<{ reviews: ReviewItem[]; averageRating: number; totalReviews: number }>(`/reviews/plan/${planId}`),
+    create: (planId: string, rating: number, comment?: string) =>
+      apiFetch<ReviewItem>('/reviews', { method: 'POST', body: JSON.stringify({ planId, rating, comment }) }),
+    admin: {
+      all: () => apiFetch<ReviewItem[]>('/reviews/admin'),
+      update: (id: string, data: { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; comment?: string; rating?: number }) =>
+        apiFetch<ReviewItem>(`/reviews/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) => apiFetch(`/reviews/admin/${id}`, { method: 'DELETE' }),
+    },
+  },
+
+  // ── Public (no auth) ─────────────────────────────────
+  public: {
+    settings: () => apiFetch<Record<string, string>>('/settings/public'),
+  },
 };
 
 // ── Shared Types ──────────────────────────────────────
+
+export type BillingCycleType =
+  | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
+  | 'QUARTERLY' | 'HALFYEARLY' | 'ANNUALLY' | 'ONETIME';
+
+export const BILLING_CYCLE_LABELS: Record<BillingCycleType, string> = {
+  DAILY: 'Daily',
+  WEEKLY: 'Weekly',
+  BIWEEKLY: 'Bi-weekly',
+  MONTHLY: 'Monthly',
+  QUARTERLY: 'Quarterly',
+  HALFYEARLY: 'Half-yearly',
+  ANNUALLY: 'Annually',
+  ONETIME: 'One-time',
+};
+
+export const BILLING_CYCLE_SHORT: Record<BillingCycleType, string> = {
+  DAILY: '/day',
+  WEEKLY: '/wk',
+  BIWEEKLY: '/2wk',
+  MONTHLY: '/mo',
+  QUARTERLY: '/qtr',
+  HALFYEARLY: '/6mo',
+  ANNUALLY: '/yr',
+  ONETIME: '',
+};
 
 export interface AuthUser {
   id: string;
@@ -368,27 +469,110 @@ export interface DashboardStats {
   };
 }
 
+// ── Plan Types ────────────────────────────────────────
+
+export interface PlanPricingItem {
+  id?: string;
+  billingCycle: BillingCycleType;
+  price: number; // in paise
+  razorpayPlanId?: string;
+  isActive?: boolean;
+}
+
+export interface PlanFeatureItem {
+  id?: string;
+  name: string;
+  included: boolean;
+  value?: string;
+  icon?: string;
+  sortOrder?: number;
+}
+
 export interface PlanItem {
   id: string;
   name: string;
   slug: string;
   description: string;
-  priceMonthly: number;
-  priceYearly: number;
+  planType: 'FREE' | 'PAID';
+  itemCategory: 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE';
+  currency: string;
+  bannerBadge?: string | null;
+  images: string[];
   isPopular: boolean;
   isActive: boolean;
   sortOrder: number;
-  features: { id?: string; name: string; included: boolean; value?: string }[];
+  stockLimit?: number | null;
+  taxPercentage?: number | null;
+  isOneTime: boolean;
+  oneTimePrice?: number | null;
+  freeTrialEnabled: boolean;
+  freeTrialDays?: number | null;
+  discountPercent?: number | null;
+  discountLabel?: string | null;
+  features: PlanFeatureItem[];
+  pricing: PlanPricingItem[];
+  _count?: { subscriptions: number };
 }
+
+export interface CreatePlanData {
+  name: string;
+  slug: string;
+  description: string;
+  planType: 'FREE' | 'PAID';
+  itemCategory?: 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE';
+  currency?: string;
+  bannerBadge?: string;
+  images?: string[];
+  isPopular?: boolean;
+  sortOrder?: number;
+  stockLimit?: number;
+  taxPercentage?: number;
+  isOneTime?: boolean;
+  oneTimePrice?: number;
+  freeTrialEnabled?: boolean;
+  freeTrialDays?: number;
+  discountPercent?: number;
+  discountLabel?: string;
+  pricing: { billingCycle: BillingCycleType; price: number }[];
+  features: { name: string; included: boolean; value?: string; icon?: string; sortOrder?: number }[];
+}
+
+// ── Bundle Types ──────────────────────────────────────
+
+export interface PlanBundleItem {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  price: number;
+  currency: string;
+  isActive: boolean;
+  plans: { plan: PlanItem }[];
+  _count?: { subscriptions: number };
+}
+
+export interface CreateBundleData {
+  name: string;
+  slug: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  planIds: string[];
+}
+
+// ── Subscription Types ────────────────────────────────
 
 export interface SubscriptionInfo {
   id: string;
   planId: string;
   status: string;
-  billingCycle: string;
+  billingCycle: BillingCycleType;
+  isOneTime: boolean;
+  discountApplied?: number;
+  trialEndsAt?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
-  plan: { name: string; priceMonthly: number; priceYearly: number };
+  plan: PlanItem;
 }
 
 export interface PaymentItem {
@@ -400,6 +584,8 @@ export interface PaymentItem {
   description?: string;
   createdAt: string;
 }
+
+// ── Admin Types ───────────────────────────────────────
 
 export interface AdminStatsOverview {
   totalUsers: number;
@@ -423,16 +609,65 @@ export interface AdminUserItem {
   subscriptions: { plan: { name: string } }[];
 }
 
-export interface CreatePlanData {
-  name: string;
-  slug: string;
-  description: string;
-  priceMonthly: number;
-  priceYearly: number;
-  isPopular?: boolean;
-  sortOrder?: number;
-  features: { name: string; included: boolean; value?: string }[];
+// ── Analytics Types ───────────────────────────────────
+
+export interface SubscriptionAnalytics {
+  totalSubscribers: number;
+  activeSubscriptions: number;
+  trialSubscriptions: number;
+  cancelledSubscriptions: number;
+  expiredSubscriptions: number;
+  haltedSubscriptions: number;
+  pendingSubscriptions: number;
+  perPlanBreakdown: { planId: string; planName: string; activeSubscribers: number }[];
+  perCycleBreakdown: { billingCycle: string; count: number }[];
 }
+
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  totalPayments: number;
+  mrr: number;
+  arr: number;
+  revenueByPlan: { planId: string; planName: string; revenue: number; count: number }[];
+  monthlyRevenue: { period: string; revenue: number; count: number }[];
+}
+
+export interface ChurnAnalytics {
+  totalCancelled: number;
+  cancelledLast30Days: number;
+  cancelledLast90Days: number;
+  churnRate30Day: number;
+  failedPayments: number;
+  haltedSubscriptions: number;
+  cancelReasons: { reason: string; count: number }[];
+  recentCancellations: {
+    id: string;
+    userName: string;
+    userEmail: string;
+    planName: string;
+    cancelledAt: string | null;
+    cancelReason: string | null;
+  }[];
+}
+
+export interface GrowthAnalytics {
+  newSubscriptionsMonthly: { month: string; count: number }[];
+  cancellationsMonthly: { month: string; count: number }[];
+  trialConversionRate: number;
+  totalTrials: number;
+  convertedTrials: number;
+  abandonedSubscriptions: number;
+  typeBreakdown: { oneTime: number; recurring: number };
+}
+
+export interface SubscriptionRate {
+  period: string;
+  newSubscriptions: number;
+  cancellations: number;
+  netGrowth: number;
+}
+
+// ── Campaign Types ────────────────────────────────────
 
 export interface CampaignItem {
   id: string;
@@ -467,4 +702,16 @@ export interface EmailTemplate {
 export interface DangerTableInfo {
   name: string;
   dbTable: string;
+}
+
+export interface ReviewItem {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  userId: string;
+  planId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  user?: { id: string; name: string; avatarUrl?: string; email?: string };
+  plan?: { id: string; name: string };
 }
