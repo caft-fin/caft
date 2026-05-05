@@ -9,9 +9,9 @@ export default function AdminEmailsPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const loadData = async () => {
+  const loadData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       const [campaignsRes, templatesRes] = await Promise.allSettled([
         api.admin.campaigns.list(),
         api.admin.templates.list(),
@@ -27,7 +27,7 @@ export default function AdminEmailsPage() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, []);
 
   const getStatusBadge = (status: string) => {

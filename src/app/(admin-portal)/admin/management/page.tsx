@@ -24,9 +24,9 @@ export default function AdminManagementPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  const loadUsers = useCallback(async (page = 1) => {
+  const loadUsers = useCallback(async (page = 1, isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: '10' });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
@@ -40,7 +40,7 @@ export default function AdminManagementPage() {
     }
   }, [search, statusFilter]);
 
-  useEffect(() => { loadUsers(); }, [loadUsers]);
+  useEffect(() => { loadUsers(1, true); }, [loadUsers]);
 
   const handleCreateUser = async () => {
     setFormError('');

@@ -94,10 +94,12 @@ export default function LandingPage() {
                       aria-label="Play video"
                     >
                       {/* YouTube thumbnail */}
-                      <img
+                      <Image
                         src={`https://img.youtube.com/vi/${getYouTubeId(heroVideoUrl)}/maxresdefault.jpg`}
                         alt="Video thumbnail"
-                        className="absolute inset-0 w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                       {/* Dark overlay */}
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
@@ -291,7 +293,7 @@ export default function LandingPage() {
               <div key={product.id} className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group flex flex-col">
                 <div className="h-48 w-full bg-gray-100 relative overflow-hidden">
                   {product.images && product.images.length > 0 ? (
-                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <Image src={product.images[0]} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                       <Package className="w-12 h-12" />

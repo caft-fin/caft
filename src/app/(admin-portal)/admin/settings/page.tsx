@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { api, ApiError } from '@/lib/apiClient';
 import {
   Sliders, Image as ImageIcon, Monitor, BellRing, Settings2,
@@ -35,15 +36,15 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       const res = await api.admin.settings();
       setSettings(res.data);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(true); }, [load]);
 
   const save = async (data: Record<string, string | boolean | undefined>) => {
     setSaving(true);
@@ -195,9 +196,9 @@ export default function AdminSettingsPage() {
                   </label>
                 </div>
                 {settings.heroImageUrl && (
-                  <div className="mt-4 rounded-2xl overflow-hidden border border-gray-100 max-h-64">
-                    <img src={settings.heroImageUrl} alt="Hero preview" className="w-full h-64 object-cover" />
-                  </div>
+                    <div className="mt-4 relative w-full h-64 rounded-2xl overflow-hidden border border-gray-100">
+                      <Image src={settings.heroImageUrl} alt="Hero preview" fill className="object-cover" unoptimized />
+                    </div>
                 )}
               </div>
             )}
@@ -277,7 +278,7 @@ export default function AdminSettingsPage() {
               {(settings.logoType || 'text') === 'text' ? (
                 <span className="text-2xl font-black text-orange-600 tracking-tight">CAFT Financial</span>
               ) : settings.logoSvgUrl ? (
-                <img src={settings.logoSvgUrl} alt="Logo" className="h-10 object-contain" />
+                <Image src={settings.logoSvgUrl} alt="Logo" width={160} height={40} className="h-10 w-auto object-contain" unoptimized />
               ) : (
                 <span className="text-gray-400 italic text-sm">No SVG URL set</span>
               )}
@@ -502,9 +503,27 @@ export default function AdminSettingsPage() {
               />
             </div>
           </div>
+          <div className="mt-8 space-y-4">
+            <h4 className="text-lg font-bold text-gray-900">Developer & Testing</h4>
+            <div className="flex items-center justify-between p-6 bg-[#F8F9FB] rounded-2xl border border-orange-100">
+              <div>
+                <p className="font-bold text-gray-900 text-lg">Enable Test Account</p>
+                <p className="text-gray-500">Allow users to log in using the test account credentials without OTP verification.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={settings.testAccountEnabled === 'true'}
+                  onChange={e => set('testAccountEnabled', String(e.target.checked))}
+                />
+                <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#E67E22]"></div>
+              </label>
+            </div>
+          </div>
           <div className="mt-10 flex justify-end">
             <button
-              onClick={() => save({ appName: settings.appName, supportEmail: settings.supportEmail })}
+              onClick={() => save({ appName: settings.appName, supportEmail: settings.supportEmail, testAccountEnabled: settings.testAccountEnabled })}
               disabled={saving}
               className="sun-gradient text-white px-10 py-4 rounded-2xl font-bold shadow-xl shadow-orange-100 hover:scale-[1.02] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60"
             >

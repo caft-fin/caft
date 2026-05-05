@@ -16,9 +16,9 @@ export default function AdminDashboardPage() {
   const [recentUsers, setRecentUsers] = useState<AdminUserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const loadData = async () => {
+  const loadData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       setError('');
       const [statsRes, usersRes] = await Promise.all([
         api.admin.statsOverview(),
@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, []);
 
   const formatCurrency = (amount: number) =>

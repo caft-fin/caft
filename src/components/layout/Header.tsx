@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/apiClient';
 
@@ -14,7 +15,7 @@ export function Header() {
     api.public.settings().then(res => {
       if (res.data.logoType === 'svg') setLogoType('svg');
       if (res.data.logoSvgUrl) setLogoSvgUrl(res.data.logoSvgUrl);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const getLinkClass = (path: string) => {
@@ -28,7 +29,7 @@ export function Header() {
       <div className="flex justify-between items-center max-w-7xl mx-auto px-6 h-20">
         <Link href="/" className="flex items-center gap-2">
           {logoType === 'svg' && logoSvgUrl ? (
-            <img src={logoSvgUrl} alt="CAFT Financial" className="h-10 object-contain" />
+            <Image src={logoSvgUrl} alt="CAFT Financial" width={160} height={40} className="h-10 w-auto object-contain" unoptimized />
           ) : (
             <span className="text-2xl font-black text-orange-600 tracking-tighter font-headline-sm">CAFT Financial</span>
           )}
@@ -41,7 +42,7 @@ export function Header() {
             Analytics
           </Link>
           <Link href="/algo-indicators" className={getLinkClass('/algo-indicators')}>
-            Algo & Indicators
+            Courses & Tools
           </Link>
           <Link href="/about" className={getLinkClass('/about')}>
             About & Contact

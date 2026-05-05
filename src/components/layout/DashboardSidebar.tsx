@@ -11,7 +11,7 @@ export function DashboardSidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Management', href: '/dashboard/management', icon: Database },
-    { name: 'Profile', href: '/dashboard/profile', icon: User },
+
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
@@ -45,10 +45,6 @@ export function DashboardSidebar() {
         })}
       </nav>
       <div className="px-4 mt-auto space-y-1">
-        <button className="w-full mb-4 bg-gradient-to-r from-primary-container to-secondary-container text-white py-3 rounded-xl font-button shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all">
-          <Plus className="w-4 h-4" />
-          New Transaction
-        </button>
         <Link href="#" className="flex items-center gap-3 text-gray-600 px-4 py-3 hover:bg-gray-50 hover:translate-x-1 transition-all duration-300 font-button">
           <HelpCircle className="w-5 h-5" />
           Support

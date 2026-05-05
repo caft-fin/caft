@@ -37,11 +37,15 @@ function getRefreshToken(): string | null {
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem('caft_access_token', access);
   localStorage.setItem('caft_refresh_token', refresh);
+  // Set a lightweight auth cookie for Next.js middleware route protection
+  document.cookie = 'caft_auth=1; path=/; max-age=604800; SameSite=Lax';
 }
 
 export function clearTokens() {
   localStorage.removeItem('caft_access_token');
   localStorage.removeItem('caft_refresh_token');
+  // Clear the auth cookie
+  document.cookie = 'caft_auth=; path=/; max-age=0';
 }
 
 /** Attempt to refresh the access token */
@@ -113,10 +117,11 @@ async function apiFetch<T>(
   return json as ApiResponse<T>;
 }
 
-/** Paginated fetch wrapper */
+/** Paginated fetch wrapper with token refresh support */
 async function apiFetchPaginated<T>(
   path: string,
   options: RequestInit = {},
+  retry = true,
 ): Promise<PaginatedApiResponse<T>> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
@@ -126,6 +131,20 @@ async function apiFetchPaginated<T>(
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  // If 401 and we haven't retried, try refreshing the token
+  if (res.status === 401 && retry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return apiFetchPaginated<T>(path, options, false);
+    }
+    // Redirect to login if refresh failed
+    if (typeof window !== 'undefined') {
+      clearTokens();
+      window.location.href = '/login';
+    }
+  }
+
   const json = await res.json();
   if (!res.ok) throw new ApiError(json.message || 'Request failed', res.status, json);
   return json as PaginatedApiResponse<T>;
@@ -363,12 +382,7 @@ export const api = {
       apiFetch<{ reviews: ReviewItem[]; averageRating: number; totalReviews: number }>(`/reviews/plan/${planId}`),
     create: (planId: string, rating: number, comment?: string) =>
       apiFetch<ReviewItem>('/reviews', { method: 'POST', body: JSON.stringify({ planId, rating, comment }) }),
-    admin: {
-      all: () => apiFetch<ReviewItem[]>('/reviews/admin'),
-      update: (id: string, data: { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; comment?: string; rating?: number }) =>
-        apiFetch<ReviewItem>(`/reviews/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) => apiFetch(`/reviews/admin/${id}`, { method: 'DELETE' }),
-    },
+    // Note: admin review operations are at api.admin.reviews
   },
 
   // ── Public (no auth) ─────────────────────────────────

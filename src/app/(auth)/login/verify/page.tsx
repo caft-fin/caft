@@ -15,17 +15,19 @@ export default function LoginVerifyPage() {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      return sessionStorage.getItem('caft_login_email') || '';
+    }
+    return '';
+  });
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
-    const storedEmail = sessionStorage.getItem('caft_login_email');
-    if (!storedEmail) {
+    if (!email) {
       router.replace('/login');
-      return;
     }
-    setEmail(storedEmail);
-  }, [router]);
+  }, [email, router]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -198,7 +200,7 @@ export default function LoginVerifyPage() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-2">
             <span className="font-bold text-gray-900">CAFT Financial</span>
-            <span className="text-gray-400">© 2024 CAFT Financial. All rights reserved.</span>
+            <span className="text-gray-400">© 2026 CAFT Financial. All rights reserved.</span>
           </div>
           <nav className="flex gap-6">
             <Link className="text-gray-400 hover:text-orange-500 transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</Link>

@@ -81,7 +81,7 @@ export default function PricingPage() {
     try {
       // 1. Create subscription/order in backend
       const res = await api.subscriptions.create(plan.id, cycle);
-      const data = res.data as any;
+      const data = res.data as unknown as { orderId: string; amount: number; currency: string; subscriptionId: string; };
  
       if (plan.isOneTime && cycle === 'ONETIME') {
         const { orderId, amount, currency } = data;
@@ -124,9 +124,9 @@ export default function PricingPage() {
           }
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Subscription error:', error);
-      alert(error.message || 'Failed to initiate subscription');
+      alert(error instanceof Error ? error.message : 'Failed to initiate subscription');
     } finally {
       setSubscribing(null);
     }

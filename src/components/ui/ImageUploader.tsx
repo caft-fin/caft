@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { UploadCloud, X, Loader2 } from 'lucide-react';
 import { api } from '@/lib/apiClient';
 
@@ -64,7 +65,7 @@ export function ImageUploader({ images, onChange, maxImages = 5 }: ImageUploader
       <div className="flex flex-wrap gap-4">
         {images.map((url, idx) => (
           <div key={idx} className="relative w-24 h-24 rounded-xl border border-gray-200 overflow-hidden group bg-gray-50 flex-shrink-0">
-            <img src={url} alt={`Upload ${idx}`} className="w-full h-full object-cover" />
+            <Image src={url} alt={`Upload ${idx}`} fill className="object-cover" unoptimized />
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <button type="button" onClick={() => removeImage(idx)} className="p-1.5 bg-red-500 rounded-full text-white hover:bg-red-600">
                 <X className="w-4 h-4" />

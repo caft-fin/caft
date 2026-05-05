@@ -1,297 +1,281 @@
 'use client';
 
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, ArrowRight, CalendarDays, ChevronRight, MoreVertical } from 'lucide-react';
-
-const commodities = [
-  {
-    icon: '★',
-    iconBg: 'bg-yellow-100 text-yellow-700',
-    name: 'Gold (MCX)',
-    sub: 'Metal - Bullion',
-    price: '₹62,450.00',
-    change: '+1,200.00 (1.9%)',
-    up: true,
-    sparkPath: 'M0,15 L10,12 L20,18 L30,5 L40,10 L50,2 L60,8',
-    sparkColor: '#22c55e',
-  },
-  {
-    icon: '⛽',
-    iconBg: 'bg-slate-100 text-slate-700',
-    name: 'Crude Oil',
-    sub: 'Energy - Domestic',
-    price: '₹6,412.00',
-    change: '-45.00 (0.7%)',
-    up: false,
-    sparkPath: 'M0,5 L10,8 L20,2 L30,15 L40,12 L50,18 L60,14',
-    sparkColor: '#ef4444',
-  },
-  {
-    icon: '🌿',
-    iconBg: 'bg-orange-100 text-orange-700',
-    name: 'Cotton',
-    sub: 'Agri - Raw',
-    price: '₹24,180.00',
-    change: '0.00 (0.0%)',
-    up: null,
-    sparkPath: 'M0,10 L60,10',
-    sparkColor: '#9ca3af',
-  },
-];
+import { useEffect, useState } from 'react';
+import { useStore } from '@/store/useStore';
+import { api } from '@/lib/apiClient';
+import type { DashboardStats, TransactionItem } from '@/lib/apiClient';
+import { 
+  TrendingUp, TrendingDown, PieChart, ArrowRight, Activity, 
+  BarChart3, Loader2, ArrowUpRight, ArrowDownRight, Globe, Gem 
+} from 'lucide-react';
 
 export default function UserAnalyticsPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [statsRes, txnsRes] = await Promise.all([
+          api.stats.dashboard().catch(() => ({ data: null })),
+          api.user.transactions(50).catch(() => ({ data: [] }))
+        ]);
+        setStats(statsRes.data as DashboardStats | null);
+        setTransactions((txnsRes.data || []) as TransactionItem[]);
+      } catch (err) {
+        console.error('Failed to fetch analytics data:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[80vh] relative p-6 overflow-hidden">
+        
+        {/* Abstract Background Chart Skeleton */}
+        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-0 opacity-40 select-none">
+          <div className="w-full max-w-6xl h-full flex items-center justify-center relative">
+            <svg viewBox="0 0 1000 400" className="w-full h-auto text-gray-200 stroke-current blur-[2px]">
+              {/* Primary Line */}
+              <path d="M0,350 C150,350 200,200 350,250 C500,300 600,100 750,150 C900,200 950,50 1000,50" fill="none" strokeWidth="6" strokeLinecap="round" />
+              {/* Secondary Line */}
+              <path d="M0,380 C200,380 250,280 400,320 C550,360 650,200 800,250 C950,300 980,150 1000,100" fill="none" strokeWidth="3" strokeDasharray="8 8" strokeLinecap="round" />
+              {/* Grid Lines */}
+              <line x1="0" y1="100" x2="1000" y2="100" strokeWidth="1" strokeDasharray="4 4" className="text-gray-100" />
+              <line x1="0" y1="200" x2="1000" y2="200" strokeWidth="1" strokeDasharray="4 4" className="text-gray-100" />
+              <line x1="0" y1="300" x2="1000" y2="300" strokeWidth="1" strokeDasharray="4 4" className="text-gray-100" />
+            </svg>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#f8f9fa] via-transparent to-transparent"></div>
+          </div>
+        </div>
+
+        {/* Foreground Content */}
+        <div className="relative z-10 flex flex-col items-center max-w-2xl text-center">
+          <div className="w-20 h-20 mb-8 rounded-full bg-orange-50 border border-orange-100 shadow-sm flex items-center justify-center relative">
+            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-orange-400" style={{ animationDuration: '3s' }}></div>
+            <BarChart3 className="w-8 h-8 text-orange-600 relative z-10" strokeWidth={1.5} />
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-6">
+            Intelligent Analytics
+          </h1>
+          
+          <p className="text-lg text-gray-500 max-w-xl leading-relaxed mb-10">
+            Gain institutional-grade clarity on your portfolio. Performance tracking, predictive trends, and proprietary algorithmic insights will be dynamically generated here.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <button className="px-8 py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2">
+              Explore Available Tools <ArrowRight className="w-4 h-4" />
+            </button>
+            <button className="px-8 py-3.5 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl font-semibold transition-all shadow-sm active:scale-95">
+              Learn about algorithms
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isProfit = stats.profitLoss >= 0;
+  
+  // Calculate simple metrics from transactions
+  const totalCredits = transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
+  const totalDebits = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
+
   return (
-    <div className="p-gutter max-w-7xl mx-auto space-y-stack-lg py-12 w-full">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 w-full">
       {/* Page Header */}
-      <section className="flex flex-col md:flex-row justify-between items-end gap-stack-md">
-        <div className="space-y-2">
-          <h2 className="font-display-lg text-display-lg text-on-surface">Market Pulse</h2>
-          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-            Real-time domestic and global commodity tracking with high-fidelity trend analysis.
+      <section className="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Portfolio Analytics</h2>
+          <p className="text-sm text-gray-500 max-w-2xl">
+            Detailed breakdown of your asset allocation, historical performance, and cash flow analysis.
           </p>
         </div>
-        <div className="flex gap-stack-sm flex-wrap">
-          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="font-label-md text-label-md text-gray-600 uppercase tracking-wider">Market Open</span>
-          </div>
-          <button className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors">
-            <CalendarDays className="w-4 h-4 text-gray-500" />
-            <span className="font-label-md text-label-md">Last 30 Days</span>
-          </button>
-        </div>
       </section>
 
-      {/* Bento Grid — Key Metrics */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-gutter">
-        {/* Gold Card */}
-        <div className="md:col-span-2 glass-card rounded-xl p-6 tonal-shadow relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <span className="text-7xl select-none">💰</span>
+      {/* Primary Metrics Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Value */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Asset Value</p>
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">{formatCurrency(stats.totalValue)}</h3>
           </div>
-          <div className="relative z-10 space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-label-md text-label-md text-primary uppercase">Commodity Focus</p>
-                <h3 className="font-headline-sm text-headline-sm mt-1">Gold Spot (XAU/INR)</h3>
+          <div className="flex items-center gap-2">
+            <div className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${isProfit ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {isProfit ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              {isProfit ? '+' : ''}{formatCurrency(stats.profitLoss)}
+            </div>
+            <span className="text-xs text-gray-500 font-medium">All time</span>
+          </div>
+        </div>
+
+        {/* Cash Flow */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Cash Flow (Recent)</p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <ArrowDownRight className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700">Inflow</span>
               </div>
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">+2.4%</span>
+              <span className="font-bold text-gray-900">{formatCurrency(totalCredits)}</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold font-headline-md">₹5,420.50</span>
-              <span className="text-on-surface-variant font-body-md text-sm">/gram</span>
-            </div>
-            {/* Mini candle chart */}
-            <div className="h-24 w-full flex items-end gap-1 pt-4">
-              {[48, 64, 80, 56, 96, 88, 72].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t-sm"
-                  style={{
-                    height: `${h}%`,
-                    backgroundColor: `hsl(25, ${60 + i * 5}%, ${70 - i * 5}%)`,
-                  }}
-                ></div>
-              ))}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                  <ArrowUpRight className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700">Outflow</span>
+              </div>
+              <span className="font-bold text-gray-900">{formatCurrency(totalDebits)}</span>
             </div>
           </div>
         </div>
 
-        {/* NIFTY 50 */}
-        <div className="glass-card rounded-xl p-6 tonal-shadow flex flex-col justify-between">
-          <div>
-            <TrendingUp className="w-6 h-6 text-primary mb-2" />
-            <p className="font-label-md text-label-md text-on-surface-variant">Domestic Index</p>
-            <h4 className="font-headline-sm text-headline-sm">NIFTY 50</h4>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold">22,419.20</p>
-            <p className="text-green-600 text-sm flex items-center gap-1">
-              <ArrowUpRight className="w-4 h-4" />
-              0.85% today
+        {/* Action Card */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-600 to-orange-500 p-6 text-white shadow-lg shadow-orange-500/20 flex flex-col justify-between">
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold mb-2">Optimize Portfolio</h3>
+            <p className="text-orange-100 text-sm mb-6 max-w-[200px]">
+              Based on your analytics, you can improve diversification by balancing your assets.
             </p>
           </div>
-        </div>
-
-        {/* USD/INR */}
-        <div className="glass-card rounded-xl p-6 tonal-shadow flex flex-col justify-between">
-          <div>
-            <span className="text-blue-500 text-2xl mb-2 block">$</span>
-            <p className="font-label-md text-label-md text-on-surface-variant">FX Rate</p>
-            <h4 className="font-headline-sm text-headline-sm">USD/INR</h4>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold">₹83.42</p>
-            <p className="text-red-500 text-sm flex items-center gap-1">
-              <ArrowDownRight className="w-4 h-4" />
-              0.12% today
-            </p>
-          </div>
+          <button className="bg-white text-orange-600 font-semibold px-4 py-2.5 rounded-xl text-sm transition-transform active:scale-95 w-fit relative z-10">
+            View Recommendations
+          </button>
+          <Activity className="absolute -right-6 -bottom-6 w-32 h-32 text-orange-400/30" />
         </div>
       </section>
 
-      {/* Interactive Visualization */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-        {/* Main Chart */}
-        <div className="lg:col-span-2 glass-card rounded-xl p-8 tonal-shadow">
-          <div className="flex justify-between items-center mb-8">
+      {/* Asset Allocation & Performance */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Allocation Breakdown */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <PieChart className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-bold text-gray-900">Asset Allocation</h3>
+          </div>
+          
+          <div className="space-y-6">
+            {/* Domestic Equity */}
             <div>
-              <h3 className="font-headline-sm text-headline-sm">Deep Market Insight</h3>
-              <p className="text-on-surface-variant text-sm">Comparative analysis of Equity vs Commodities</p>
-            </div>
-            <div className="flex bg-surface-container-low p-1 rounded-lg">
-              <button className="px-4 py-1.5 rounded-md text-sm font-medium bg-white shadow-sm text-primary">Line</button>
-              <button className="px-4 py-1.5 rounded-md text-sm font-medium text-gray-500">Bar</button>
-              <button className="px-4 py-1.5 rounded-md text-sm font-medium text-gray-500">Candle</button>
-            </div>
-          </div>
-          <div className="relative h-[350px] w-full">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 800 300">
-              <line className="chart-grid-line" x1="0" x2="800" y1="50" y2="50" />
-              <line className="chart-grid-line" x1="0" x2="800" y1="125" y2="125" />
-              <line className="chart-grid-line" x1="0" x2="800" y1="200" y2="200" />
-              <line className="chart-grid-line" x1="0" x2="800" y1="275" y2="275" />
-              <defs>
-                <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#ff9500" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#ff9500" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,250 Q100,200 200,220 T400,150 T600,100 T800,130 L800,300 L0,300 Z"
-                fill="url(#chartGradient)"
-              />
-              <path
-                d="M0,250 Q100,200 200,220 T400,150 T600,100 T800,130"
-                fill="none"
-                stroke="#ff9500"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <circle cx="600" cy="100" r="6" fill="#ff9500" />
-              <circle cx="600" cy="100" r="12" fill="#ff9500" fillOpacity="0.2" />
-            </svg>
-            {/* Tooltip */}
-            <div className="absolute bg-white p-3 rounded-lg shadow-xl border border-orange-100 z-10"
-              style={{ top: '60px', left: '62%' }}>
-              <p className="text-[10px] uppercase font-bold text-gray-400">Peak Insight</p>
-              <p className="text-sm font-bold text-on-surface">₹12,450.00</p>
-              <p className="text-[10px] text-green-600">+12% vs Baseline</p>
-            </div>
-          </div>
-          <div className="flex justify-between mt-6 text-gray-400 text-xs font-medium">
-            <span>Jan 01</span><span>Jan 08</span><span>Jan 15</span><span>Jan 22</span><span>Jan 31</span>
-          </div>
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-gutter">
-          {/* Sentiment */}
-          <div className="glass-card rounded-xl p-6 tonal-shadow">
-            <h4 className="font-label-md text-label-md text-on-surface-variant uppercase mb-4">Sentiment Index</h4>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Bullish Sentiment</span>
-              <span className="text-orange-600 font-bold">78%</span>
-            </div>
-            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full sun-gradient rounded-full" style={{ width: '78%' }}></div>
-            </div>
-            <p className="mt-3 text-xs text-on-surface-variant leading-relaxed">
-              Market sentiment is currently dominated by gold-backed assets and tech equity optimism.
-            </p>
-          </div>
-
-          {/* Expert Advice */}
-          <div className="glass-card rounded-xl p-6 tonal-shadow relative overflow-hidden group" style={{ background: 'linear-gradient(135deg, #8c5000 0%, #ff9500 100%)' }}>
-            <div className="relative z-10">
-              <h4 className="font-headline-sm text-headline-sm mb-2 text-white">Expert Advice</h4>
-              <p className="text-sm opacity-90 mb-4 text-white">Your portfolio is currently 15% underweight in Foreign Commodities compared to peers.</p>
-              <button className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">Review Allocation</button>
-            </div>
-            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <TrendingUp className="w-32 h-32 text-white" />
-            </div>
-          </div>
-
-          {/* Upcoming Events */}
-          <div className="glass-card rounded-xl p-6 tonal-shadow">
-            <h4 className="font-label-md text-label-md text-on-surface-variant uppercase mb-4">Upcoming Data</h4>
-            <div className="space-y-4">
-              <div className="flex gap-4 items-center">
-                <div className="bg-blue-50 text-blue-600 p-2 rounded-lg shrink-0">
-                  <CalendarDays className="w-4 h-4" />
+              <div className="flex justify-between items-end mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Domestic Equity</p>
+                    <p className="text-xs text-gray-500">Indian Stock Market</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">RBI Policy Meet</p>
-                  <p className="text-xs text-gray-500">Tomorrow, 10:00 AM</p>
+                <div className="text-right">
+                  <p className="font-bold text-gray-900">{stats.allocation.domesticEquity}%</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(stats.totalValue * (stats.allocation.domesticEquity / 100))}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
               </div>
-              <div className="flex gap-4 items-center">
-                <div className="bg-orange-50 text-orange-600 p-2 rounded-lg shrink-0">
-                  <CalendarDays className="w-4 h-4" />
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-orange-500 h-full rounded-full" style={{ width: `${stats.allocation.domesticEquity}%` }}></div>
+              </div>
+            </div>
+
+            {/* Foreign Assets */}
+            <div>
+              <div className="flex justify-between items-end mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Foreign Assets</p>
+                    <p className="text-xs text-gray-500">Global Equities</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">Gold CPI Release</p>
-                  <p className="text-xs text-gray-500">Feb 05, 2024</p>
+                <div className="text-right">
+                  <p className="font-bold text-gray-900">{stats.allocation.foreignAssets}%</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(stats.totalValue * (stats.allocation.foreignAssets / 100))}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-[#fdd404] h-full rounded-full" style={{ width: `${stats.allocation.foreignAssets}%` }}></div>
+              </div>
+            </div>
+
+            {/* Digital Gold */}
+            <div>
+              <div className="flex justify-between items-end mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Gem className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">Digital Gold</p>
+                    <p className="text-xs text-gray-500">Precious Metals</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-gray-900">{stats.allocation.digitalGold}%</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(stats.totalValue * (stats.allocation.digitalGold / 100))}</p>
+                </div>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-blue-400 h-full rounded-full" style={{ width: `${stats.allocation.digitalGold}%` }}></div>
               </div>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Commodity Watchlist Table */}
-      <section className="glass-card rounded-xl overflow-hidden tonal-shadow">
-        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-headline-sm text-headline-sm">Commodity Watchlist</h3>
-          <button className="text-primary text-sm font-bold flex items-center gap-1">
-            View All Markets <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-8 py-4 font-label-md text-label-md text-gray-500 uppercase">Asset</th>
-                <th className="px-8 py-4 font-label-md text-label-md text-gray-500 uppercase text-right">Last Price</th>
-                <th className="px-8 py-4 font-label-md text-label-md text-gray-500 uppercase text-right">Change</th>
-                <th className="px-8 py-4 font-label-md text-label-md text-gray-500 uppercase text-center">Trend</th>
-                <th className="px-8 py-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {commodities.map((c, i) => (
-                <tr key={i} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-8 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${c.iconBg}`}>
-                        {c.icon}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm">{c.name}</p>
-                        <p className="text-xs text-gray-500">{c.sub}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-4 text-right font-bold">{c.price}</td>
-                  <td className={`px-8 py-4 text-right font-medium ${c.up === true ? 'text-green-600' : c.up === false ? 'text-red-600' : 'text-gray-400'}`}>{c.change}</td>
-                  <td className="px-8 py-4">
-                    <div className="flex justify-center">
-                      <svg width="60" height="20">
-                        <path d={c.sparkPath} fill="none" stroke={c.sparkColor} strokeWidth="2" />
-                      </svg>
-                    </div>
-                  </td>
-                  <td className="px-8 py-4 text-right">
-                    <button className="p-2 hover:bg-orange-50 rounded-full transition-colors">
-                      <MoreVertical className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Transaction Flow Analysis */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-900">Recent Activity Flow</h3>
+            <button className="text-sm font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition-colors">
+              Full Report <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[300px]">
+            {transactions.slice(0, 10).map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                <div>
+                  <p className="font-semibold text-sm text-gray-900">{tx.title}</p>
+                  <p className="text-xs text-gray-500">{new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(tx.createdAt))}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`font-bold text-sm ${tx.type === 'credit' ? 'text-green-600' : 'text-gray-900'}`}>
+                    {tx.type === 'credit' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </p>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">{tx.status}</p>
+                </div>
+              </div>
+            ))}
+            {transactions.length === 0 && (
+              <div className="text-center py-12 text-gray-500 text-sm">
+                No recent transactions to analyze.
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>

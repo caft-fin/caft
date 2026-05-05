@@ -8,9 +8,9 @@ export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<AdminStatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const loadStats = async () => {
+  const loadStats = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       const res = await api.admin.statsOverview();
       setStats(res.data);
     } catch (err) {
@@ -22,7 +22,7 @@ export default function AdminAnalyticsPage() {
   };
 
   useEffect(() => {
-    loadStats();
+    loadStats(true);
   }, []);
 
   const formatCurrency = (amount: number) =>

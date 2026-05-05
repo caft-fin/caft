@@ -21,8 +21,8 @@ export default function ProductsPage() {
   const [churn, setChurn] = useState<ChurnAnalytics | null>(null);
   const [growth, setGrowth] = useState<GrowthAnalytics | null>(null);
 
-  const fetchPlans = useCallback(async () => {
-    setLoading(true);
+  const fetchPlans = useCallback(async (isInitial = false) => {
+    if (!isInitial) setLoading(true);
     try {
       const res = await api.admin.plans.all();
       setAllPlans(res.data);
@@ -43,7 +43,7 @@ export default function ProductsPage() {
     } catch { }
   }, []);
 
-  useEffect(() => { fetchPlans(); }, [fetchPlans]);
+  useEffect(() => { fetchPlans(true); }, [fetchPlans]);
   useEffect(() => { if (tab === 'analytics') fetchAnalytics(); }, [tab, fetchAnalytics]);
 
   const handleSave = async (data: CreatePlanData) => {

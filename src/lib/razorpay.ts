@@ -9,7 +9,10 @@ declare global {
   }
 }
 
-const RAZORPAY_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_SW0DSwBCxvRLsn';
+const RAZORPAY_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+if (!RAZORPAY_KEY) {
+  console.error('❌ NEXT_PUBLIC_RAZORPAY_KEY_ID is not configured. Payment checkout will not work.');
+}
 
 /**
  * Dynamically load the Razorpay Checkout.js script

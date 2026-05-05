@@ -34,9 +34,9 @@ export default function DangerZonePage() {
     }
   }, [isAuthenticated, isSuperAdmin, router]);
 
-  const loadTables = async () => {
+  const loadTables = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (!isInitial) setLoading(true);
       const res = await api.admin.danger.tables();
       setTables(res.data);
       if (res.data.length > 0) setSelectedTable(res.data[0].name);
@@ -47,11 +47,11 @@ export default function DangerZonePage() {
     }
   };
 
-  useEffect(() => { loadTables(); }, []);
+  useEffect(() => { loadTables(true); }, []);
 
-  const loadRecords = useCallback(async (tableName: string, page = 1) => {
+  const loadRecords = useCallback(async (tableName: string, page = 1, isInitial = false) => {
     try {
-      setRecordsLoading(true);
+      if (!isInitial) setRecordsLoading(true);
       setError('');
       const res = await api.admin.danger.records(tableName, page);
       setRecords(res.data);
@@ -69,7 +69,7 @@ export default function DangerZonePage() {
   }, []);
 
   useEffect(() => {
-    if (selectedTable) loadRecords(selectedTable);
+    if (selectedTable) loadRecords(selectedTable, 1, true);
   }, [selectedTable, loadRecords]);
 
   const handleDelete = async () => {

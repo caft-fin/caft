@@ -5,15 +5,16 @@ import { useStore } from '@/store/useStore';
 import { getDashboardStats, getRecentTransactions, type Transaction } from '@/lib/api';
 import {
   TrendingUp, TrendingDown, Wallet, ArrowRight,
-  Landmark, Gem, Download, Globe, Lightbulb, Plus, Loader2
+  Landmark, Gem, Download, Globe, Lightbulb, Plus, Loader2,
+  PieChart, Activity
 } from 'lucide-react';
 
 const getTransactionIcon = (icon: string) => {
   switch (icon) {
-    case 'account_balance': return <Landmark className="w-6 h-6" />;
-    case 'grid_goldenratio': return <Gem className="w-6 h-6" />;
-    case 'download': return <Download className="w-6 h-6" />;
-    default: return <Wallet className="w-6 h-6" />;
+    case 'account_balance': return <Landmark className="w-5 h-5" />;
+    case 'grid_goldenratio': return <Gem className="w-5 h-5" />;
+    case 'download': return <Download className="w-5 h-5" />;
+    default: return <Wallet className="w-5 h-5" />;
   }
 };
 
@@ -60,198 +61,192 @@ export default function DashboardPage() {
     );
   }
 
+  const formatCurrency = (value: number) => 
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value);
+
+  const isProfit = dashboardStats.profitLoss >= 0;
+
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-gutter">
-      {/* Hero Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-        {/* Portfolio Card */}
-        <div className="md:col-span-2 bg-gradient-to-br from-orange-600 to-orange-400 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl shadow-orange-500/20">
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-12">
-              <div>
-                <p className="text-orange-100 font-label-md uppercase tracking-widest text-xs mb-2">Total Portfolio Value</p>
-                <h2 className="text-display-lg font-headline-md leading-none">
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(dashboardStats.totalValue)}
-                </h2>
-              </div>
-              <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 text-right">
-                <p className="text-orange-100 text-[10px] uppercase font-bold tracking-tighter">Real-time P/L</p>
-                <p className={`text-xl font-bold flex items-center justify-end gap-1 ${dashboardStats.profitLoss >= 0 ? 'text-white' : 'text-red-200'}`}>
-                  {dashboardStats.profitLoss >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {dashboardStats.profitLoss >= 0 ? '+' : ''}
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(dashboardStats.profitLoss)}
-                </p>
-              </div>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+      {/* Top Overview Section */}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Main Portfolio Summary Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex-1 flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <p className="text-gray-500 font-medium text-sm mb-1">Total Portfolio Value</p>
+              <h2 className="text-3xl font-bold text-gray-900">
+                {formatCurrency(dashboardStats.totalValue)}
+              </h2>
             </div>
-            <div className="flex gap-4">
-              <button className="bg-white text-orange-600 px-6 py-3 rounded-xl font-button text-sm shadow-sm active:scale-95 transition-all">Add Funds</button>
-              <button className="bg-orange-500/30 border border-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-button text-sm active:scale-95 transition-all">Withdraw</button>
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${isProfit ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {isProfit ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {isProfit ? '+' : ''}{formatCurrency(dashboardStats.profitLoss)}
             </div>
           </div>
-          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute right-10 top-10 opacity-20">
-            <Wallet className="w-28 h-28" />
+          <div className="flex gap-3 mt-auto">
+            <button className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-sm">
+              Add Funds
+            </button>
+            <button className="bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 px-5 py-2.5 rounded-xl font-medium text-sm transition-colors">
+              Withdraw
+            </button>
           </div>
         </div>
 
-        {/* Asset Breakdown Bento */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm">
-          <h3 className="font-headline-sm text-lg mb-6">Asset Segments</h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 font-medium">Domestic Equity</span>
-                <span className="font-bold">{dashboardStats.allocation.domesticEquity}%</span>
+        {/* Asset Segments Minimal Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:w-3/5">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                <PieChart className="w-4 h-4" />
               </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${dashboardStats.allocation.domesticEquity}%` }}></div>
-              </div>
+              <p className="text-gray-500 font-medium text-sm">Domestic</p>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 font-medium">Foreign Assets</span>
-                <span className="font-bold">{dashboardStats.allocation.foreignAssets}%</span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${dashboardStats.allocation.foreignAssets}%`, backgroundColor: '#fdd404' }}></div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 font-medium">Digital Gold</span>
-                <span className="font-bold">{dashboardStats.allocation.digitalGold}%</span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${dashboardStats.allocation.digitalGold}%`, backgroundColor: '#86aeff' }}></div>
-              </div>
+            <p className="text-2xl font-bold text-gray-900 mb-2">{dashboardStats.allocation.domesticEquity}%</p>
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mt-auto">
+              <div className="h-full bg-orange-500 rounded-full" style={{ width: `${dashboardStats.allocation.domesticEquity}%` }}></div>
             </div>
           </div>
-          <div className="mt-8 pt-6 border-t border-gray-50">
-            <button className="text-orange-600 font-button text-sm flex items-center gap-2 hover:gap-3 transition-all">
-              Detailed Allocation
-              <ArrowRight className="w-4 h-4" />
-            </button>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                <Globe className="w-4 h-4" />
+              </div>
+              <p className="text-gray-500 font-medium text-sm">Foreign</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 mb-2">{dashboardStats.allocation.foreignAssets}%</p>
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mt-auto">
+              <div className="h-full bg-[#fdd404] rounded-full" style={{ width: `${dashboardStats.allocation.foreignAssets}%` }}></div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Gem className="w-4 h-4" />
+              </div>
+              <p className="text-gray-500 font-medium text-sm">Digital Gold</p>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 mb-2">{dashboardStats.allocation.digitalGold}%</p>
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mt-auto">
+              <div className="h-full bg-blue-400 rounded-full" style={{ width: `${dashboardStats.allocation.digitalGold}%` }}></div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter pb-24">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-gutter">
-          {/* Wealth Projections Chart */}
-          <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 gap-6">
+        
+        {/* Main Column (Transactions and Projections) */}
+        <div className="space-y-6">
+          {/* Wealth Projections */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col justify-between min-h-[320px]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div>
-                <h3 className="font-headline-sm text-xl">Wealth Growth Projections</h3>
-                <p className="text-gray-500 text-sm">Estimated trajectory based on current SIPs</p>
+                <h3 className="text-lg font-bold text-gray-900">Wealth Projections</h3>
+                <p className="text-sm text-gray-500">Based on standard SIP at 12% expected return</p>
               </div>
               <div className="flex bg-gray-50 p-1 rounded-xl">
-                <button className="px-4 py-1.5 rounded-lg text-xs font-bold bg-white shadow-sm text-orange-600">3M</button>
-                <button className="px-4 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:text-orange-500">6M</button>
-                <button className="px-4 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:text-orange-500">1Y</button>
-                <button className="px-4 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:text-orange-500">3Y</button>
-                <button className="px-4 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:text-orange-500">5Y</button>
+                {['3M', '6M', '1Y', '3Y', '5Y'].map((period, i) => (
+                  <button key={period} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${i === 4 ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}>
+                    {period}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="h-64 flex items-end justify-between gap-2 px-2">
-              {[40, 55, 68, 82, 100].map((h, i) => (
-                <div key={i} className={`w-full rounded-t-xl relative group ${i === 4 ? 'bg-orange-500 shadow-lg shadow-orange-500/20' : 'bg-orange-50'}`} style={{ height: `${h}%` }}>
-                  {i < 4 && <div className="absolute inset-x-0 bottom-0 bg-orange-500/20 rounded-t-xl h-[65%] transition-all group-hover:h-[85%]"></div>}
+            
+            {dashboardStats.totalValue === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                <TrendingUp className="w-10 h-10 text-gray-300 mb-3" />
+                <h4 className="text-gray-900 font-semibold mb-1">No Projections Available</h4>
+                <p className="text-sm text-gray-500 max-w-sm">Invest to see your wealth projections over time.</p>
+                <button className="mt-4 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors">Start Investing</button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="p-4 bg-gray-50/80 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Total Invested</p>
+                    <p className="text-xl font-bold text-gray-900">₹{formatCurrency(dashboardStats.totalValue * 0.8).replace('₹', '')}</p>
+                  </div>
+                  <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-100">
+                    <p className="text-xs text-orange-600 font-semibold uppercase tracking-wider mb-1">Expected Wealth</p>
+                    <p className="text-xl font-bold text-orange-700">₹{formatCurrency(dashboardStats.totalValue * 1.93).replace('₹', '')}</p>
+                    <p className="text-xs text-orange-600 mt-1 font-medium">Est. Returns: ₹{formatCurrency(dashboardStats.totalValue * 1.13).replace('₹', '')}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-4 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              <span>2024</span><span>2025</span><span>2026</span><span>2028</span><span>2029</span>
-            </div>
+
+                <div className="relative h-40 w-full mt-auto flex flex-col">
+                  <div className="flex-1 relative">
+                    <svg className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <defs>
+                        <linearGradient id="gradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#f97316" stopOpacity="0.2"/>
+                          <stop offset="100%" stopColor="#f97316" stopOpacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <path d="M0,100 L0,80 Q30,60 60,35 T100,0 L100,100 Z" fill="url(#gradient)" />
+                      <path d="M0,80 Q30,60 60,35 T100,0" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
+                      
+                      <circle cx="0" cy="80" r="3" fill="#fff" stroke="#f97316" strokeWidth="2" />
+                      <circle cx="60" cy="35" r="4" fill="#fff" stroke="#f97316" strokeWidth="2" className="shadow-lg" />
+                      <circle cx="100" cy="0" r="4" fill="#f97316" stroke="#fff" strokeWidth="2" />
+                      
+                      <rect x="48" y="15" width="24" height="12" rx="4" fill="#fff" stroke="#f97316" strokeWidth="1" />
+                      <text x="60" y="23" fontSize="6" fill="#f97316" fontWeight="bold" textAnchor="middle">+93%</text>
+                    </svg>
+                  </div>
+                  <div className="flex justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2">
+                    <span>Today</span>
+                    <span className="translate-x-4">Year 3</span>
+                    <span>Year 5</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Recent Transactions */}
-          <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
-            <div className="p-8 flex justify-between items-center border-b border-gray-50">
-              <h3 className="font-headline-sm text-lg">Recent Transactions</h3>
-              <button className="text-sm font-button text-gray-400 hover:text-orange-500 transition-colors">View All History</button>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">Recent Transactions</h3>
+              <button className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors">View All</button>
             </div>
             <div className="divide-y divide-gray-50">
-              {transactions.map((tx) => (
-                <div key={tx.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group">
+              {transactions.slice(0, 4).map((tx) => (
+                <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${iconBgClass[tx.icon ?? ''] ?? 'bg-gray-50 text-gray-600'}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconBgClass[tx.icon ?? ''] ?? 'bg-gray-100 text-gray-600'}`}>
                       {getTransactionIcon(tx.icon ?? '')}
                     </div>
                     <div>
-                      <p className="font-bold text-sm">{tx.title}</p>
-                      <p className="text-[10px] text-gray-400 uppercase font-medium">{tx.subtitle}</p>
+                      <p className="font-semibold text-gray-900 text-sm">{tx.title}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">{tx.subtitle}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-bold text-sm ${tx.type === 'credit' ? 'text-green-600' : ''}`}>
-                      {tx.type === 'credit' ? '+' : '- '}
-                      {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(tx.amount)}
+                    <p className={`font-semibold text-sm ${tx.type === 'credit' ? 'text-green-600' : 'text-gray-900'}`}>
+                      {tx.type === 'credit' ? '+' : '-'}{formatCurrency(tx.amount)}
                     </p>
-                    <p className="text-[10px] text-green-500 font-bold uppercase">{tx.status}</p>
+                    <p className="text-xs text-gray-400 font-medium mt-0.5 capitalize">{tx.status.toLowerCase()}</p>
                   </div>
                 </div>
               ))}
               {transactions.length === 0 && (
-                <div className="p-12 text-center text-gray-400">
-                  <p>No transactions yet</p>
+                <div className="p-10 text-center text-gray-500 text-sm">
+                  No transactions yet
                 </div>
               )}
             </div>
           </div>
         </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-gutter">
-          {/* Market Pulse */}
-          <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-            <h3 className="font-headline-sm text-lg mb-6">Market Pulse</h3>
-            <div className="space-y-6">
-              {[
-                { code: 'N50', label: 'Nifty 50', value: '22,123.45', change: '+1.24%', up: true },
-                { code: 'GLD', label: 'Gold (24K)', value: '6,540.00', change: '-0.12%', up: false },
-                { code: 'USD', label: 'USD/INR', value: '82.94', change: '0.00%', up: null },
-              ].map((item) => (
-                <div key={item.code} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-bold">{item.code}</div>
-                    <span className="text-sm font-bold">{item.label}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">{item.value}</p>
-                    <p className={`text-[10px] font-bold ${item.up === true ? 'text-green-500' : item.up === false ? 'text-red-500' : 'text-gray-400'}`}>{item.change}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Promo Card */}
-          <div className="bg-gradient-to-tr rounded-[2rem] p-8 relative overflow-hidden group" style={{ background: 'linear-gradient(to top right, #fdd404, #ff9500)' }}>
-            <div className="relative z-10">
-              <h4 className="font-headline-sm text-xl mb-2" style={{ color: '#6f5c00' }}>Foreign Assets Await</h4>
-              <p className="text-sm mb-6 leading-relaxed" style={{ color: '#554600' }}>Diversify your portfolio with US Tech stocks. Zero brokerage on first 3 trades.</p>
-              <button className="bg-white font-button text-sm px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all" style={{ color: '#221b00' }}>Explore Global</button>
-            </div>
-            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-              <Globe className="w-32 h-32" />
-            </div>
-          </div>
-
-          {/* Growth Tip */}
-          <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm border-l-4 border-l-orange-500">
-            <div className="flex items-center gap-2 text-orange-500 mb-2">
-              <Lightbulb className="w-4 h-4" />
-              <span className="text-[10px] uppercase font-bold tracking-widest">Growth Tip</span>
-            </div>
-            <p className="text-sm font-body-md text-gray-600">&quot;Your Domestic Equity allocation is 5% higher than your target. Consider rebalancing into Digital Gold to maintain risk levels.&quot;</p>
-          </div>
-        </div>
       </div>
 
       {/* Mobile FAB */}
-      <button className="lg:hidden fixed bottom-20 right-6 z-40 w-14 h-14 bg-orange-500 text-white rounded-full shadow-xl shadow-orange-500/30 flex items-center justify-center active:scale-95 transition-all">
+      <button className="lg:hidden fixed bottom-6 right-6 z-40 w-14 h-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg shadow-orange-600/30 flex items-center justify-center active:scale-95 transition-all">
         <Plus className="w-6 h-6" />
       </button>
     </div>

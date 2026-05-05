@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Star, CheckCircle, XCircle, Trash2, MessageSquare, Clock } from 'lucide-react';
 import { api } from '@/lib/apiClient';
 import type { ReviewItem } from '@/lib/apiClient';
@@ -9,10 +10,10 @@ export default function ReviewsManagementPage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchReviews = useCallback(async () => {
-    setLoading(true);
+  const fetchReviews = useCallback(async (isInitial = false) => {
+    if (!isInitial) setLoading(true);
     try {
-      const res = await api.reviews.admin.all();
+      const res = await api.admin.reviews.all();
       setReviews(res.data);
     } catch (e) {
       console.error('Failed to fetch reviews', e);
@@ -22,12 +23,12 @@ export default function ReviewsManagementPage() {
   }, []);
 
   useEffect(() => {
-    fetchReviews();
+    fetchReviews(true);
   }, [fetchReviews]);
 
   const updateStatus = async (id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED') => {
     try {
-      await api.reviews.admin.update(id, { status });
+      await api.admin.reviews.update(id, { status });
       fetchReviews();
     } catch (e) {
       alert('Failed to update review status');
@@ -37,7 +38,7 @@ export default function ReviewsManagementPage() {
   const deleteReview = async (id: string) => {
     if (!confirm('Are you sure you want to delete this review?')) return;
     try {
-      await api.reviews.admin.delete(id);
+      await api.admin.reviews.delete(id);
       fetchReviews();
     } catch (e) {
       alert('Failed to delete review');
@@ -76,7 +77,7 @@ export default function ReviewsManagementPage() {
                 <div className="w-full md:w-64 flex-shrink-0">
                   <div className="flex items-center gap-3 mb-2">
                     {review.user?.avatarUrl ? (
-                      <img src={review.user.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+                      <Image src={review.user.avatarUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" unoptimized />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold uppercase">
                         {review.user?.name.charAt(0) || '?'}
