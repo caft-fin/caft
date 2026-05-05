@@ -3,8 +3,10 @@ node_modules
 .env
 .env.local
 .git
+.github
 .gitignore
 *.log
+*.txt
 README.md
 AGENTS.md
 CLAUDE.md
