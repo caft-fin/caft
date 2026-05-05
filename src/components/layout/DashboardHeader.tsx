@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
-import { Menu, Search, Bell, HelpCircle } from 'lucide-react';
+import { Menu, Bell } from 'lucide-react';
 import Image from 'next/image';
 
 export function DashboardHeader() {

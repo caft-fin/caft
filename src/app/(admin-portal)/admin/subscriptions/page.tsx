@@ -258,6 +258,17 @@ function DiscountsTab({ plans, onRefresh }: { plans: PlanItem[]; onRefresh: () =
 
 /* ── Analytics Tab ── */
 function AnalyticsTab({ analytics, revenue, churn, growth }: { analytics: SubscriptionAnalytics | null; revenue: RevenueAnalytics | null; churn: ChurnAnalytics | null; growth: GrowthAnalytics | null }) {
+  const [paymentIssues, setPaymentIssues] = useState<import('@/lib/apiClient').PaymentIssuesData | null>(null);
+  const [issuesLoading, setIssuesLoading] = useState(false);
+
+  useEffect(() => {
+    setIssuesLoading(true);
+    api.admin.analytics.paymentIssues()
+      .then(res => setPaymentIssues(res.data))
+      .catch(() => {})
+      .finally(() => setIssuesLoading(false));
+  }, []);
+
   if (!analytics) return <div className="text-center py-20 text-gray-400">Loading analytics...</div>;
 
   const kpis = [
@@ -280,6 +291,105 @@ function AnalyticsTab({ analytics, revenue, churn, growth }: { analytics: Subscr
             <p className="text-[11px] text-gray-500 font-medium mt-1">{k.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Payment Issues Section ── */}
+      <div className="bg-white rounded-2xl border border-red-100 p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center"><AlertTriangle className="w-4 h-4 text-red-500" /></div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Payment Issues & Abandoned Carts</h3>
+            <p className="text-[11px] text-gray-500">Users who need help — failed payments and incomplete checkouts</p>
+          </div>
+          {paymentIssues && (
+            <div className="ml-auto flex gap-3">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">{paymentIssues.summary.totalFailedPayments} Failed</span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">{paymentIssues.summary.totalAbandoned} Abandoned</span>
+            </div>
+          )}
+        </div>
+
+        {issuesLoading ? (
+          <div className="text-center py-8 text-gray-400 text-sm">Loading payment issues...</div>
+        ) : !paymentIssues || (paymentIssues.failedPayments.length === 0 && paymentIssues.abandonedSubscriptions.length === 0) ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-green-600 font-medium">✅ No payment issues found — all users are healthy!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Failed Payments Table */}
+            {paymentIssues.failedPayments.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3">Failed Payments</h4>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/80">
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">User</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Plan</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Amount</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Reason</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">When</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {paymentIssues.failedPayments.map(fp => (
+                        <tr key={fp.id} className="hover:bg-red-50/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-gray-900 text-sm">{fp.userName}</p>
+                            <p className="text-[11px] text-gray-500">{fp.userEmail}</p>
+                            {fp.userPhone && <p className="text-[11px] text-gray-400">{fp.userPhone}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{fp.planName}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">₹{(fp.amount / 100).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{fp.failureReason || 'Unknown'}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(fp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Abandoned Subscriptions Table */}
+            {paymentIssues.abandonedSubscriptions.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-3 mt-4">Abandoned Checkouts</h4>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/80">
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">User</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Plan</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Cycle</th>
+                        <th className="text-left px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase">Started</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {paymentIssues.abandonedSubscriptions.map(ab => (
+                        <tr key={ab.id} className="hover:bg-amber-50/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-gray-900 text-sm">{ab.userName}</p>
+                            <p className="text-[11px] text-gray-500">{ab.userEmail}</p>
+                            {ab.userPhone && <p className="text-[11px] text-gray-400">{ab.userPhone}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{ab.planName}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{ab.billingCycle}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(ab.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Per-Plan Breakdown */}

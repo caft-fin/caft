@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Database, User, Settings, Plus, HelpCircle, LogOut } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, BarChart3, Database, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import { api } from '@/lib/apiClient';
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const logout = useStore(state => state.logout);
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -14,6 +18,16 @@ export function DashboardSidebar() {
 
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch {
+      // Ignore API errors — still clear local state
+    }
+    logout();
+    router.replace('/');
+  };
 
   return (
     <aside className="hidden lg:flex flex-col h-screen w-64 border-r sticky left-0 top-0 bg-white border-gray-100 shadow-xl shadow-orange-900/5 space-y-2 py-6 z-40">
@@ -49,10 +63,13 @@ export function DashboardSidebar() {
           <HelpCircle className="w-5 h-5" />
           Support
         </Link>
-        <Link href="/" className="flex items-center gap-3 text-gray-600 px-4 py-3 hover:bg-gray-50 hover:translate-x-1 transition-all duration-300 font-button">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 text-gray-600 px-4 py-3 hover:bg-red-50 hover:text-red-600 hover:translate-x-1 transition-all duration-300 font-button w-full text-left"
+        >
           <LogOut className="w-5 h-5" />
           Logout
-        </Link>
+        </button>
       </div>
     </aside>
   );

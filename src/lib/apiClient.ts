@@ -213,6 +213,8 @@ export const api = {
         body: JSON.stringify(data),
       }),
     linkedAccounts: () => apiFetch<LinkedAccount[]>('/users/me/linked-accounts'),
+    addLinkedAccount: (data: { bankName: string; bankAbbr: string; accountName: string; last4: string; accountType?: string; colorClass?: string }) =>
+      apiFetch<LinkedAccount>('/users/me/linked-accounts', { method: 'POST', body: JSON.stringify(data) }),
     removeLinkedAccount: (id: string) =>
       apiFetch(`/users/me/linked-accounts/${id}`, { method: 'DELETE' }),
     notifications: () => apiFetch<NotificationPrefs>('/users/me/notifications'),
@@ -276,6 +278,8 @@ export const api = {
       apiFetch(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteUser: (id: string) =>
       apiFetch(`/admin/users/${id}`, { method: 'DELETE' }),
+    userDetails: (id: string) =>
+      apiFetch<AdminUserDetails>(`/admin/users/${id}/details`),
     settings: () => apiFetch<Record<string, string>>('/admin/settings'),
     updateSettings: (data: Record<string, string | boolean>) =>
       apiFetch('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
@@ -317,6 +321,11 @@ export const api = {
           method: 'DELETE',
           body: JSON.stringify({ planIds }),
         }),
+      syncRazorpay: (planId?: string) =>
+        apiFetch('/plans/admin/sync-razorpay', {
+          method: 'POST',
+          body: JSON.stringify({ planId }),
+        }),
     },
 
     // ── Bundles (Admin) ──────────────────────────────────
@@ -337,6 +346,7 @@ export const api = {
       churn: () => apiFetch<ChurnAnalytics>('/admin/analytics/churn'),
       growth: () => apiFetch<GrowthAnalytics>('/admin/analytics/growth'),
       rates: () => apiFetch<SubscriptionRate[]>('/admin/analytics/rates'),
+      paymentIssues: () => apiFetch<PaymentIssuesData>('/admin/analytics/payment-issues'),
     },
 
     // ── Campaigns ──────────────────────────────────────
@@ -398,7 +408,7 @@ export type BillingCycleType =
   | 'QUARTERLY' | 'HALFYEARLY' | 'ANNUALLY' | 'ONETIME';
 
 export const BILLING_CYCLE_LABELS: Record<BillingCycleType, string> = {
-  DAILY: 'Daily',
+  DAILY: 'Weekly (7-day)',
   WEEKLY: 'Weekly',
   BIWEEKLY: 'Bi-weekly',
   MONTHLY: 'Monthly',
@@ -623,6 +633,38 @@ export interface AdminUserItem {
   subscriptions: { plan: { name: string } }[];
 }
 
+export interface AdminUserDetails {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatarUrl?: string;
+  role: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  kycVerified: boolean;
+  isSuperAdmin: boolean;
+  googleId?: string;
+  referralCode?: string;
+  lastIpAddress?: string;
+  lastCity?: string;
+  lastState?: string;
+  lastPincode?: string;
+  lastCountry?: string;
+  totalVisits: number;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+  verifiedBy: string;
+  totalRevenue: number;
+  totalRevenueFormatted: string;
+  activeSubscription?: { id: string; status: string; billingCycle: string; plan: { name: string; slug: string }; createdAt: string; currentPeriodEnd?: string } | null;
+  subscriptions: { id: string; status: string; billingCycle: string; plan: { name: string; slug: string }; createdAt: string; currentPeriodEnd?: string }[];
+  payments: { id: string; amount: number; currency: string; status: string; method?: string; description?: string; failureReason?: string; razorpayPaymentId?: string; createdAt: string; subscription?: { plan: { name: string } } }[];
+  linkedAccounts: LinkedAccount[];
+  _count: { referrals: number; reviews: number; transactions: number };
+}
+
 // ── Analytics Types ───────────────────────────────────
 
 export interface SubscriptionAnalytics {
@@ -679,6 +721,38 @@ export interface SubscriptionRate {
   newSubscriptions: number;
   cancellations: number;
   netGrowth: number;
+}
+
+// ── Payment Issues Types ──────────────────────────────
+
+export interface PaymentIssuesData {
+  failedPayments: {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    userPhone: string | null;
+    amount: number;
+    currency: string;
+    method: string | null;
+    failureReason: string | null;
+    planName: string;
+    createdAt: string;
+  }[];
+  abandonedSubscriptions: {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    userPhone: string | null;
+    planName: string;
+    billingCycle: string;
+    createdAt: string;
+  }[];
+  summary: {
+    totalFailedPayments: number;
+    totalAbandoned: number;
+  };
 }
 
 // ── Campaign Types ────────────────────────────────────

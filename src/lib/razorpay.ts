@@ -9,9 +9,13 @@ declare global {
   }
 }
 
-const RAZORPAY_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-if (!RAZORPAY_KEY) {
-  console.error('❌ NEXT_PUBLIC_RAZORPAY_KEY_ID is not configured. Payment checkout will not work.');
+/**
+ * Get the Razorpay key lazily to avoid SSR issues.
+ * NEXT_PUBLIC_ vars are inlined at build time, but module-level evaluation
+ * can cause problems during SSR when window isn't available.
+ */
+function getRazorpayKey(): string | undefined {
+  return process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 }
 
 /**
@@ -43,6 +47,13 @@ export async function openRazorpayCheckout(options: {
   onSuccess: (paymentId: string, subscriptionId: string, signature: string) => void;
   onFailure: (error: string) => void;
 }) {
+  const key = getRazorpayKey();
+  if (!key) {
+    console.error('❌ NEXT_PUBLIC_RAZORPAY_KEY_ID is not configured. Payment checkout will not work.');
+    options.onFailure('Payment gateway is not configured. Please contact support.');
+    return;
+  }
+
   const loaded = await loadRazorpayScript();
   if (!loaded) {
     options.onFailure('Failed to load payment gateway. Please try again.');
@@ -50,7 +61,7 @@ export async function openRazorpayCheckout(options: {
   }
 
   const rzp = new window.Razorpay({
-    key: RAZORPAY_KEY,
+    key,
     subscription_id: options.subscriptionId,
     name: 'CAFT Financial',
     description: `Subscription: ${options.planName}`,
@@ -91,6 +102,13 @@ export async function openRazorpayPayment(options: {
   onSuccess: (paymentId: string, orderId: string, signature: string) => void;
   onFailure: (error: string) => void;
 }) {
+  const key = getRazorpayKey();
+  if (!key) {
+    console.error('❌ NEXT_PUBLIC_RAZORPAY_KEY_ID is not configured. Payment checkout will not work.');
+    options.onFailure('Payment gateway is not configured. Please contact support.');
+    return;
+  }
+
   const loaded = await loadRazorpayScript();
   if (!loaded) {
     options.onFailure('Failed to load payment gateway. Please try again.');
@@ -98,7 +116,7 @@ export async function openRazorpayPayment(options: {
   }
 
   const rzp = new window.Razorpay({
-    key: RAZORPAY_KEY,
+    key,
     amount: options.amount,
     currency: options.currency,
     order_id: options.orderId,
@@ -127,3 +145,4 @@ export async function openRazorpayPayment(options: {
 
   rzp.open();
 }
+

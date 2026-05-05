@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { api, type AdminUserItem, ApiError } from '@/lib/apiClient';
+import UserDetailDrawer from '@/components/admin/UserDetailDrawer';
 import {
   UserPlus, TrendingUp, Timer, ShieldCheck, ChevronDown, MoreVertical,
   ChevronLeft, ChevronRight, Loader2, X, Shield
@@ -17,9 +18,10 @@ export default function AdminManagementPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  // Modals
+  // Modals & drawer
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ email: '', name: '', phone: '', password: '' });
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
@@ -199,7 +201,7 @@ export default function AdminManagementPage() {
                   const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                   const planName = user.subscriptions?.[0]?.plan?.name ?? 'Free';
                   return (
-                    <tr key={user.id} className="hover:bg-orange-50/20 transition-colors group">
+                    <tr key={user.id} className="hover:bg-orange-50/20 transition-colors group cursor-pointer" onClick={() => setSelectedUserId(user.id)}>
                       <td className="px-10 py-6">
                         <div className="flex items-center gap-4">
                           <div className="w-11 h-11 rounded-full flex items-center justify-center font-black ring-2 ring-white shadow-sm bg-orange-100 text-orange-700">
@@ -329,6 +331,9 @@ export default function AdminManagementPage() {
           </div>
         </div>
       )}
+
+      {/* User Detail Drawer */}
+      <UserDetailDrawer userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
     </>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, XCircle, Zap, Crown, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { getIconComponent } from '@/components/admin/subscriptions/IconPicker';
 import { api, BILLING_CYCLE_LABELS, BILLING_CYCLE_SHORT } from '@/lib/apiClient';
 import type { BillingCycleType } from '@/lib/apiClient';
@@ -81,15 +81,31 @@ export default function PricingPage() {
     try {
       // 1. Create subscription/order in backend
       const res = await api.subscriptions.create(plan.id, cycle);
-      const data = res.data as unknown as { orderId: string; amount: number; currency: string; subscriptionId: string; };
+      // The backend wraps the result in ApiResponse, so data is at res.data
+      // For one-time: { subscription, subscriptionId, orderId, amount, currency }
+      // For recurring: { subscription, razorpaySubscriptionId, shortUrl }
+      const data = res.data as unknown as {
+        subscription: unknown;
+        // One-time fields
+        orderId?: string;
+        subscriptionId?: string;
+        amount?: number;
+        currency?: string;
+        // Recurring fields
+        razorpaySubscriptionId?: string;
+        shortUrl?: string;
+      };
  
       if (plan.isOneTime && cycle === 'ONETIME') {
         const { orderId, amount, currency } = data;
+        if (!orderId) {
+          throw new Error('Order ID not received from server');
+        }
         await openRazorpayPayment({
           orderId,
           planName: plan.name,
-          amount,
-          currency,
+          amount: amount || 0,
+          currency: currency || 'INR',
           userEmail: user?.email || '',
           userName: user?.name || '',
           onSuccess: (paymentId, ordId, signature) => {
@@ -102,14 +118,19 @@ export default function PricingPage() {
           }
         });
       } else {
-        const { subscriptionId } = data;
+        // Recurring subscription — backend returns razorpaySubscriptionId
+        const rzpSubscriptionId = data.razorpaySubscriptionId;
+        if (!rzpSubscriptionId) {
+          throw new Error('Razorpay subscription ID not received from server');
+        }
+
         const price = getPriceForCycle(plan, cycle) || 0;
         const discountedPrice = (plan.discountPercent ?? 0) > 0 
           ? Math.round(price * (1 - (plan.discountPercent || 0) / 100)) 
           : price;
  
         await openRazorpayCheckout({
-          subscriptionId,
+          subscriptionId: rzpSubscriptionId,
           planName: plan.name,
           amount: discountedPrice,
           userEmail: user?.email || '',

@@ -5,10 +5,13 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   avatarUrl?: string;
   membershipLevel?: string;
   role: 'USER' | 'ADMIN';
   isSuperAdmin?: boolean;
+  googleId?: string;
+  verifiedBy?: 'OTP' | 'Google';
 }
 
 export interface Transaction {
@@ -100,6 +103,13 @@ export const useStore = create<AppState>()(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('caft_access_token');
           localStorage.removeItem('caft_refresh_token');
+          // Clear the auth cookie used by Next.js middleware
+          document.cookie = 'caft_auth=; path=/; max-age=0';
+          // Clear the persisted Zustand store to prevent stale auth state
+          localStorage.removeItem('caft-storage');
+          // Clear any session storage items
+          sessionStorage.removeItem('caft_login_email');
+          sessionStorage.removeItem('caft_post_login_redirect');
         }
         set({ user: null, isAuthenticated: false, isAdmin: false, isSuperAdmin: false });
       },
