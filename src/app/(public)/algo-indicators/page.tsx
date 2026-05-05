@@ -93,7 +93,7 @@ export default function AlgoIndicatorsPage() {
             <span>Courses & Tools</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-black text-gray-900 tracking-tighter mb-6 leading-tight">
-            Algo & <span className="text-transparent bg-clip-text sun-gradient">Indicators</span>
+            Courses & <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff9500] to-[#ffb874]">Tools</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed">
             Supercharge your trading with our professional suite of market analysis tools, courses, and premium services.
