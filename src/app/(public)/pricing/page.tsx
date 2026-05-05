@@ -47,14 +47,14 @@ export default function PricingPage() {
         else if (allCycles.has('ANNUALLY')) setSelectedCycle('ANNUALLY');
         else if (allCycles.size > 0) setSelectedCycle(Array.from(allCycles)[0] as BillingCycleType);
       }
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   }, []);
 
   // Get all available billing cycles across plans
   const availableCycles: BillingCycleType[] = [];
   const cycleSet = new Set<string>();
   plans.forEach(p => p.pricing?.forEach(pr => { if (!cycleSet.has(pr.billingCycle) && pr.billingCycle !== 'ONETIME') { cycleSet.add(pr.billingCycle); availableCycles.push(pr.billingCycle as BillingCycleType); } }));
-  const cycleOrder: BillingCycleType[] = ['DAILY','WEEKLY','BIWEEKLY','MONTHLY','QUARTERLY','HALFYEARLY','ANNUALLY'];
+  const cycleOrder: BillingCycleType[] = ['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'QUARTERLY', 'HALFYEARLY', 'ANNUALLY'];
   availableCycles.sort((a, b) => cycleOrder.indexOf(a) - cycleOrder.indexOf(b));
 
   const recurringPlans = plans.filter(p => !p.isOneTime);
@@ -64,19 +64,19 @@ export default function PricingPage() {
     const pr = plan.pricing?.find(p => p.billingCycle === cycle);
     return pr ? pr.price : null;
   };
- 
+
   const handleSubscribe = async (plan: PricingPlan, cycle: BillingCycleType) => {
     if (!isAuthenticated) {
       sessionStorage.setItem('caft_post_login_redirect', '/pricing');
       router.push('/login');
       return;
     }
- 
+
     if (plan.planType === 'FREE') {
       router.push('/dashboard');
       return;
     }
- 
+
     setSubscribing(plan.id);
     try {
       // 1. Create subscription/order in backend
@@ -95,7 +95,7 @@ export default function PricingPage() {
         razorpaySubscriptionId?: string;
         shortUrl?: string;
       };
- 
+
       if (plan.isOneTime && cycle === 'ONETIME') {
         const { orderId, amount, currency } = data;
         if (!orderId) {
@@ -125,10 +125,10 @@ export default function PricingPage() {
         }
 
         const price = getPriceForCycle(plan, cycle) || 0;
-        const discountedPrice = (plan.discountPercent ?? 0) > 0 
-          ? Math.round(price * (1 - (plan.discountPercent || 0) / 100)) 
+        const discountedPrice = (plan.discountPercent ?? 0) > 0
+          ? Math.round(price * (1 - (plan.discountPercent || 0) / 100))
           : price;
- 
+
         await openRazorpayCheckout({
           subscriptionId: rzpSubscriptionId,
           planName: plan.name,
@@ -194,16 +194,14 @@ export default function PricingPage() {
                 const discountedPrice = hasDiscount ? Math.round(price! * (1 - (plan.discountPercent || 0) / 100)) : price;
 
                 return (
-                  <div key={plan.id} className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300 hover:translate-y-[-4px] ${
-                    plan.isPopular
+                  <div key={plan.id} className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300 hover:translate-y-[-4px] ${plan.isPopular
                       ? 'sun-gradient text-white shadow-2xl scale-[1.03]'
                       : 'bg-white border border-gray-100 shadow-sm'
-                  }`}>
+                    }`}>
                     {/* Badge */}
                     {plan.bannerBadge && (
-                      <span className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        plan.isPopular ? 'bg-white text-orange-600' : 'bg-orange-100 text-orange-700'
-                      }`}>{plan.bannerBadge}</span>
+                      <span className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${plan.isPopular ? 'bg-white text-orange-600' : 'bg-orange-100 text-orange-700'
+                        }`}>{plan.bannerBadge}</span>
                     )}
 
                     <div className="mb-6">
@@ -232,9 +230,8 @@ export default function PricingPage() {
                       {plan.features.map((f, i) => {
                         const Icon = f.included ? (getIconComponent(f.icon) || CheckCircle2) : XCircle;
                         return (
-                          <li key={i} className={`flex items-center gap-3 text-sm ${
-                            f.included ? '' : (plan.isPopular ? 'opacity-40' : 'text-gray-400')
-                          }`}>
+                          <li key={i} className={`flex items-center gap-3 text-sm ${f.included ? '' : (plan.isPopular ? 'opacity-40' : 'text-gray-400')
+                            }`}>
                             <Icon className="w-4 h-4 flex-shrink-0" />
                             <span>{f.name}</span>
                           </li>
@@ -242,14 +239,13 @@ export default function PricingPage() {
                       })}
                     </ul>
 
-                    <button 
+                    <button
                       onClick={() => handleSubscribe(plan, selectedCycle)}
                       disabled={subscribing !== null}
-                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                        plan.isPopular
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${plan.isPopular
                           ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
                           : 'sun-gradient text-white shadow-md hover:opacity-90'
-                      }`}
+                        }`}
                     >
                       {subscribing === plan.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -288,7 +284,7 @@ export default function PricingPage() {
                           return <li key={i} className="flex items-center gap-3 text-sm text-gray-700"><Icon className="w-4 h-4 text-indigo-500" />{f.name}</li>;
                         })}
                       </ul>
-                      <button 
+                      <button
                         onClick={() => handleSubscribe(plan, 'ONETIME')}
                         disabled={subscribing !== null}
                         className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
@@ -297,7 +293,7 @@ export default function PricingPage() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
-                            Buy Lifetime Access <Sparkles className="w-4 h-4" />
+                            Buy and Access for Life
                           </>
                         )}
                       </button>
@@ -322,7 +318,7 @@ export default function PricingPage() {
             <p className="text-white/90 text-body-lg max-w-xl mx-auto mb-10">
               Join thousands of investors who trust CAFT Financial for smarter wealth management.
             </p>
-            <Link 
+            <Link
               href="/login"
               className="inline-block bg-white text-primary px-10 py-4 rounded-xl font-button shadow-xl hover:scale-105 transition-all"
             >
