@@ -194,7 +194,7 @@ export default function PricingPage() {
                 const discountedPrice = hasDiscount ? Math.round(price! * (1 - (plan.discountPercent || 0) / 100)) : price;
 
                 return (
-                  <div key={plan.id} className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300 hover:translate-y-[-4px] ${plan.isPopular
+                  <div key={plan.id} id={`plan-${plan.id}`} className={`relative rounded-3xl p-8 flex flex-col transition-all duration-300 hover:translate-y-[-4px] scroll-mt-24 ${plan.isPopular
                       ? 'sun-gradient text-white shadow-2xl scale-[1.03]'
                       : 'bg-white border border-gray-100 shadow-sm'
                     }`}>
@@ -270,7 +270,7 @@ export default function PricingPage() {
                 </div>
                 <div className={`grid grid-cols-1 gap-8 max-w-4xl mx-auto ${oneTimePlans.length >= 2 ? 'md:grid-cols-2' : ''}`}>
                   {oneTimePlans.map(plan => (
-                    <div key={plan.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-8 border border-indigo-100 flex flex-col">
+                    <div key={plan.id} id={`plan-${plan.id}`} className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-8 border border-indigo-100 flex flex-col scroll-mt-24">
                       {plan.bannerBadge && <span className="self-start px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 mb-4">{plan.bannerBadge}</span>}
                       <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                       <div className="flex items-baseline gap-2 mb-3">

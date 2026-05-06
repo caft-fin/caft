@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { GlassCard } from "@/components/ui/GlassCard";
 import Image from "next/image";
 import { PlayCircle, TrendingUp, LineChart, ArrowRight, Wallet, Users, CheckCircle2, Package } from "lucide-react";
@@ -321,9 +322,9 @@ export default function LandingPage() {
                         'Free'
                       )}
                     </div>
-                    <button className="text-sm font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-colors">
+                    <Link href={`/pricing#plan-${product.id}`} className="text-sm font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-colors">
                       View Details
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

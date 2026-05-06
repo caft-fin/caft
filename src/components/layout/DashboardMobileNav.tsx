@@ -2,16 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BarChart2, User, Menu } from 'lucide-react';
+import { Home, BarChart2, Database, Menu } from 'lucide-react';
+import { useStore } from '@/store/useStore';
 
 export function DashboardMobileNav() {
   const pathname = usePathname();
+  const setMobileMenuOpen = useStore(state => state.setMobileMenuOpen);
 
   const navItems = [
-    { name: 'Home', href: '/dashboard', icon: Home },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
-    { name: 'Profile', href: '/dashboard/profile', icon: User },
-    { name: 'More', href: '#', icon: Menu },
+    { name: 'Manage', href: '/dashboard/management', icon: Database },
+    { name: 'More', href: '#', icon: Menu, isButton: true },
   ];
 
   return (
@@ -19,6 +21,19 @@ export function DashboardMobileNav() {
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         const IconComponent = item.icon;
+        if (item.isButton) {
+          return (
+            <button
+              key={item.name}
+              onClick={() => setMobileMenuOpen(true)}
+              className={`flex flex-col items-center justify-center rounded-xl px-3 py-1 active:scale-90 duration-150 text-gray-400 hover:text-orange-500 transition-all`}
+            >
+              <IconComponent className="w-6 h-6" />
+              <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{item.name}</span>
+            </button>
+          );
+        }
+
         return (
           <Link
             key={item.name}

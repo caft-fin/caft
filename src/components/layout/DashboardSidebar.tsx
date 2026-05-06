@@ -10,6 +10,8 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useStore(state => state.logout);
+  const isMobileMenuOpen = useStore(state => state.isMobileMenuOpen);
+  const setMobileMenuOpen = useStore(state => state.setMobileMenuOpen);
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -30,7 +32,14 @@ export function DashboardSidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col h-screen w-64 border-r sticky left-0 top-0 bg-white border-gray-100 shadow-xl shadow-orange-900/5 space-y-2 py-6 z-40">
+    <>
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[50] lg:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside className={`fixed inset-y-0 left-0 flex flex-col h-screen w-64 bg-white border-r border-gray-100 shadow-xl space-y-2 py-6 z-[60] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="px-6 mb-8">
         <div className="flex items-center gap-3">
           <Link href="/">
@@ -46,6 +55,7 @@ export function DashboardSidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-r-lg transition-all duration-300 font-button ${
                 isActive
                   ? 'bg-orange-50 text-orange-600 border-r-4 border-orange-500'
@@ -72,5 +82,6 @@ export function DashboardSidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

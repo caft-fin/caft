@@ -6,11 +6,15 @@ import Image from 'next/image';
 
 export function DashboardHeader() {
   const user = useStore(state => state.user);
+  const setMobileMenuOpen = useStore(state => state.setMobileMenuOpen);
   const defaultAvatar = "https://lh3.googleusercontent.com/aida-public/AB6AXuDRAqVpnM2SgRG47Xn9-wEBcer1EsvX7h1vK1YkXuIsfX73wCL22npGIvJAf1qvzbCxqlFg595DuxLk1_Uq_AShET13upSn_ODbQHzTFykDeiW_c6wgQaUk2YRzB-yTQ5vOrvrX_BQztHShteuQApCiz5p0iGyDzYW0FPXJvOyYRVqgtUtdrKF3OTN1FjrTGKuzgR_SbJyghIhI9whkXMSjTg-FcGo-R2D6jSY142Qkx9EzoBox-WPkXYBBjZQKzr9-yhC7YOoQd38";
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 shadow-sm shadow-orange-500/5 px-6 py-3 h-16 flex justify-between items-center w-full">
-      <div className="flex items-center gap-4 lg:hidden">
+      <div 
+        className="flex items-center gap-4 lg:hidden cursor-pointer" 
+        onClick={() => setMobileMenuOpen(true)}
+      >
         <Menu className="text-orange-600 w-6 h-6" />
         <span className="text-xl font-bold tracking-tight text-orange-600 font-headline-sm">CAFT</span>
       </div>

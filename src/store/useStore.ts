@@ -73,6 +73,10 @@ interface AppState {
   updateDashboardStats: (stats: Partial<DashboardStats>) => void;
   setAdminUsers: (users: AdminUser[]) => void;
   setTransactions: (transactions: Transaction[]) => void;
+
+  // Mobile Menu
+  isMobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
 }
 
 const initialDashboardStats: DashboardStats = {
@@ -138,7 +142,10 @@ export const useStore = create<AppState>()(
         })),
 
       setAdminUsers: (users) => set({ adminUsers: users }),
-      setTransactions: (transactions) => set({ transactions })
+      setTransactions: (transactions) => set({ transactions }),
+
+      isMobileMenuOpen: false,
+      setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open })
     }),
     {
       name: 'caft-storage',
