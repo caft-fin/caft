@@ -19,10 +19,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (hydrated && !isAuthenticated) {
-      sessionStorage.setItem('caft_post_login_redirect', window.location.pathname);
-      router.replace('/login');
+      window.location.href = '/';
     }
-  }, [hydrated, isAuthenticated, router]);
+  }, [hydrated, isAuthenticated]);
 
   // Show nothing while hydrating to prevent flash of content
   if (!hydrated || !isAuthenticated) {

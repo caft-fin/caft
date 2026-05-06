@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Copy, CreditCard, TrendingUp, Users, BarChart3, AlertTriangle, Package, Percent, ChevronDown, Eye, X, MapPin, Phone, Mail } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, CreditCard, TrendingUp, Users, BarChart3, AlertTriangle, Package, Percent, ChevronDown, Eye, X, MapPin, Phone, Mail, Filter } from 'lucide-react';
 import { api, BILLING_CYCLE_LABELS } from '@/lib/apiClient';
 import type { PlanItem, BillingCycleType, CreatePlanData, SubscriptionAnalytics, RevenueAnalytics, ChurnAnalytics, GrowthAnalytics, PlanSubscribersData, PlanSubscriberItem } from '@/lib/apiClient';
 import { PlanFormModal } from '@/components/admin/subscriptions/PlanFormModal';
@@ -10,6 +10,15 @@ import { CategoryPricingTab } from '@/components/admin/subscriptions/CategoryPri
 import { BundlesTab } from '@/components/admin/subscriptions/BundlesTab';
 
 type Tab = 'plans' | 'bundles' | 'discounts' | 'analytics' | 'category-pricing';
+type CategoryFilter = 'ALL' | 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE';
+
+const CATEGORY_OPTIONS: { id: CategoryFilter; label: string }[] = [
+  { id: 'ALL', label: 'All' },
+  { id: 'SUBSCRIPTION', label: 'Subscriptions' },
+  { id: 'DIGITAL_PRODUCT', label: 'Digital Products' },
+  { id: 'PHYSICAL_PRODUCT', label: 'Physical Products' },
+  { id: 'SERVICE', label: 'Services' },
+];
 
 export default function SubscriptionsPage() {
   const [tab, setTab] = useState<Tab>('plans');
@@ -25,6 +34,7 @@ export default function SubscriptionsPage() {
   const [subscribersPlan, setSubscribersPlan] = useState<string | null>(null);
   const [subscribersData, setSubscribersData] = useState<PlanSubscribersData | null>(null);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
 
   const fetchPlans = useCallback(async (isInitial = false) => {
     if (!isInitial) setLoading(true);
@@ -34,7 +44,9 @@ export default function SubscriptionsPage() {
     } catch { } finally { setLoading(false); }
   }, []);
 
-  const plans = allPlans.filter(p => !p.itemCategory || p.itemCategory === 'SUBSCRIPTION');
+  const plans = categoryFilter === 'ALL'
+    ? allPlans
+    : allPlans.filter(p => p.itemCategory === categoryFilter);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -81,13 +93,13 @@ export default function SubscriptionsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Subscription Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage plans, bundles, discounts and view analytics</p>
+          <h1 className="text-2xl font-black text-gray-900">Catalog</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage all plans, products, bundles, pricing and analytics</p>
         </div>
         {tab === 'plans' && (
           <button onClick={() => { setEditingPlan(null); setShowForm(true); }}
             className="flex items-center gap-2 px-5 py-3 rounded-xl sun-gradient text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95">
-            <Plus className="w-4 h-4" /> Create Plan
+            <Plus className="w-4 h-4" /> Add Plan
           </button>
         )}
       </div>
@@ -105,12 +117,24 @@ export default function SubscriptionsPage() {
       {/* Plans Tab */}
       {tab === 'plans' && (
         <div className="space-y-4">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="w-4 h-4 text-gray-400" />
+            {CATEGORY_OPTIONS.map(opt => (
+              <button key={opt.id} onClick={() => setCategoryFilter(opt.id)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${categoryFilter === opt.id ? 'bg-orange-100 text-orange-700 shadow-sm' : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
+                {opt.label}
+                {opt.id !== 'ALL' && <span className="ml-1.5 text-[10px] opacity-70">({allPlans.filter(p => p.itemCategory === opt.id).length})</span>}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <div className="text-center py-20 text-gray-400">Loading plans...</div>
           ) : plans.length === 0 ? (
             <div className="text-center py-20">
-              <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No plans yet. Create your first plan.</p>
+              <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">{categoryFilter === 'ALL' ? 'No plans yet. Create your first plan.' : `No ${CATEGORY_OPTIONS.find(o => o.id === categoryFilter)?.label?.toLowerCase()} found.`}</p>
             </div>
           ) : (
             plans.map(plan => (
@@ -123,10 +147,12 @@ export default function SubscriptionsPage() {
                         {plan.planType}
                       </span>
                       {plan.bannerBadge && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-purple-100 text-purple-700">{plan.bannerBadge}</span>}
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-100 text-blue-700">{plan.itemCategory?.replace('_', ' ') || 'SUBSCRIPTION'}</span>
                       {!plan.isActive && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-600">Inactive</span>}
-                      {plan.isOneTime && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-100 text-blue-700">Lifetime</span>}
+                      {plan.isOneTime && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-100 text-indigo-700">Lifetime</span>}
                       {plan.freeTrialEnabled && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-teal-100 text-teal-700">{plan.freeTrialDays}d Trial</span>}
                       {(plan.discountPercent ?? 0) > 0 && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-pink-100 text-pink-700">{plan.discountPercent}% Off</span>}
+                      {plan.stockLimit !== null && plan.stockLimit !== undefined && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-700">Stock: {plan.stockLimit}</span>}
                     </div>
                     <p className="text-sm text-gray-500 mb-3 max-w-xl">{plan.description}</p>
                     {/* Pricing */}

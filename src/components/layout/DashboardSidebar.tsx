@@ -28,7 +28,6 @@ export function DashboardSidebar() {
       // Ignore API errors — still clear local state
     }
     logout();
-    router.replace('/');
   };
 
   return (

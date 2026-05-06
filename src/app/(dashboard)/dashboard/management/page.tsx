@@ -137,11 +137,17 @@ export default function SubscriptionManagementPage() {
               
               <div className="mb-6">
                 <span className="text-3xl font-black text-gray-900">
-                  {plan.pricing && plan.pricing.length > 0 ? formatCurrency(plan.pricing[0].price) : 'Free'}
+                  {plan.isOneTime && plan.oneTimePrice
+                    ? formatCurrency(plan.oneTimePrice)
+                    : plan.pricing && plan.pricing.length > 0
+                      ? formatCurrency(plan.pricing[0].price)
+                      : 'Free'}
                 </span>
-                {plan.pricing && plan.pricing.length > 0 && (
+                {plan.isOneTime && plan.oneTimePrice ? (
+                  <span className="text-sm text-gray-500 font-medium"> one-time</span>
+                ) : plan.pricing && plan.pricing.length > 0 ? (
                   <span className="text-sm text-gray-500 font-medium">/{plan.pricing[0].billingCycle.toLowerCase()}</span>
-                )}
+                ) : null}
               </div>
 
               <ul className="space-y-3 mb-8">
@@ -165,9 +171,7 @@ export default function SubscriptionManagementPage() {
                 }`}>
                 {activeSub?.planId === plan.id 
                   ? 'Current Plan' 
-                  : plan.isOneTime 
-                    ? 'Buy Now' 
-                    : 'Upgrade Plan'}
+                  : 'View Details'}
               </button>
             </div>
           ))}
