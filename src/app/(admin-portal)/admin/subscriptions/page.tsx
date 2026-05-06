@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Copy, CreditCard, TrendingUp, Users, BarChart3, AlertTriangle, Package, Percent, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Copy, CreditCard, TrendingUp, Users, BarChart3, AlertTriangle, Package, Percent, ChevronDown, Eye, X, MapPin, Phone, Mail } from 'lucide-react';
 import { api, BILLING_CYCLE_LABELS } from '@/lib/apiClient';
-import type { PlanItem, BillingCycleType, CreatePlanData, SubscriptionAnalytics, RevenueAnalytics, ChurnAnalytics, GrowthAnalytics } from '@/lib/apiClient';
+import type { PlanItem, BillingCycleType, CreatePlanData, SubscriptionAnalytics, RevenueAnalytics, ChurnAnalytics, GrowthAnalytics, PlanSubscribersData, PlanSubscriberItem } from '@/lib/apiClient';
 import { PlanFormModal } from '@/components/admin/subscriptions/PlanFormModal';
 import { getIconComponent } from '@/components/admin/subscriptions/IconPicker';
+import { CategoryPricingTab } from '@/components/admin/subscriptions/CategoryPricingTab';
+import { BundlesTab } from '@/components/admin/subscriptions/BundlesTab';
 
-type Tab = 'plans' | 'bundles' | 'discounts' | 'analytics';
+type Tab = 'plans' | 'bundles' | 'discounts' | 'analytics' | 'category-pricing';
 
 export default function SubscriptionsPage() {
   const [tab, setTab] = useState<Tab>('plans');
@@ -20,6 +22,9 @@ export default function SubscriptionsPage() {
   const [revenue, setRevenue] = useState<RevenueAnalytics | null>(null);
   const [churn, setChurn] = useState<ChurnAnalytics | null>(null);
   const [growth, setGrowth] = useState<GrowthAnalytics | null>(null);
+  const [subscribersPlan, setSubscribersPlan] = useState<string | null>(null);
+  const [subscribersData, setSubscribersData] = useState<PlanSubscribersData | null>(null);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
 
   const fetchPlans = useCallback(async (isInitial = false) => {
     if (!isInitial) setLoading(true);
@@ -68,6 +73,7 @@ export default function SubscriptionsPage() {
     { id: 'plans', label: 'Plans', icon: CreditCard },
     { id: 'bundles', label: 'Bundles', icon: Package },
     { id: 'discounts', label: 'Discounts', icon: Percent },
+    { id: 'category-pricing', label: 'Category Pricing', icon: TrendingUp },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
@@ -150,6 +156,9 @@ export default function SubscriptionsPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-1 ml-4">
                     <span className="text-xs text-gray-400 mr-2">{plan._count?.subscriptions || 0} subs</span>
+                    <button onClick={async () => { setSubscribersPlan(plan.id); setSubscribersLoading(true); try { const res = await api.admin.planSubscribers(plan.id); setSubscribersData(res.data); } catch {} finally { setSubscribersLoading(false); } }} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-green-600 transition-colors" title="View Subscribers">
+                      <Eye className="w-4 h-4" />
+                    </button>
                     <button onClick={() => { setEditingPlan(plan); setShowForm(true); }} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-orange-600 transition-colors" title="Edit">
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -173,6 +182,9 @@ export default function SubscriptionsPage() {
       {/* Discounts Tab */}
       {tab === 'discounts' && <DiscountsTab plans={plans} onRefresh={fetchPlans} />}
 
+      {/* Category Pricing Tab */}
+      {tab === 'category-pricing' && <CategoryPricingTab />}
+
       {/* Analytics Tab */}
       {tab === 'analytics' && <AnalyticsTab analytics={analytics} revenue={revenue} churn={churn} growth={growth} />}
 
@@ -180,20 +192,15 @@ export default function SubscriptionsPage() {
       {showForm && (
         <PlanFormModal plan={editingPlan} onClose={() => { setShowForm(false); setEditingPlan(null); }} onSave={handleSave} loading={saving} />
       )}
-    </div>
-  );
-}
 
-/* ── Bundles Tab ── */
-function BundlesTab({ plans }: { plans: PlanItem[] }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-      <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg font-bold text-gray-700 mb-2">Plan Bundles</h3>
-      <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">Bundle multiple plans together and offer them at a custom price.</p>
-      <button className="px-5 py-3 rounded-xl sun-gradient text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all">
-        <Plus className="w-4 h-4 inline mr-2" /> Create Bundle
-      </button>
+      {/* Subscriber Details Modal */}
+      {subscribersPlan && (
+        <SubscriberDetailsModal
+          data={subscribersData}
+          loading={subscribersLoading}
+          onClose={() => { setSubscribersPlan(null); setSubscribersData(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -482,6 +489,121 @@ function AnalyticsTab({ analytics, revenue, churn, growth }: { analytics: Subscr
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Subscriber Details Modal ── */
+function SubscriberDetailsModal({ data, loading, onClose }: { data: PlanSubscribersData | null; loading: boolean; onClose: () => void }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              {data?.plan?.name ? `Subscribers — ${data.plan.name}` : 'Subscribers'}
+            </h2>
+            {data?.meta && <p className="text-xs text-gray-500 mt-0.5">{data.meta.total} active subscriber{data.meta.total !== 1 ? 's' : ''}</p>}
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto">
+          {loading ? (
+            <div className="text-center py-20 text-gray-400">Loading subscribers...</div>
+          ) : !data || data.subscribers.length === 0 ? (
+            <div className="text-center py-20">
+              <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No active subscribers for this plan.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50/80 sticky top-0">
+                    <th className="text-left px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Subscriber</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Location</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Cycle</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Total Paid</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Since</th>
+                    <th className="text-center px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">Payments</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {data.subscribers.map((sub) => (
+                    <>
+                      <tr key={sub.subscriptionId} className="hover:bg-orange-50/30 transition-colors cursor-pointer" onClick={() => setExpanded(expanded === sub.subscriptionId ? null : sub.subscriptionId)}>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-gray-900">{sub.user.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Mail className="w-3 h-3 text-gray-400" />
+                            <span className="text-[11px] text-gray-500">{sub.user.email}</span>
+                          </div>
+                          {sub.user.phone && (
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Phone className="w-3 h-3 text-gray-400" />
+                              <span className="text-[11px] text-gray-400">{sub.user.phone}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            <span className="text-gray-600 text-xs">{sub.location}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-orange-100 text-orange-700">
+                            {sub.billingCycle}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{sub.totalPaidFormatted}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          {new Date(sub.subscribedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button className="text-xs text-orange-600 font-semibold hover:underline">
+                            {sub.paymentHistory.length} {expanded === sub.subscriptionId ? '▲' : '▼'}
+                          </button>
+                        </td>
+                      </tr>
+                      {expanded === sub.subscriptionId && sub.paymentHistory.length > 0 && (
+                        <tr key={`${sub.subscriptionId}-history`}>
+                          <td colSpan={6} className="p-0">
+                            <div className="bg-gray-50/70 px-6 py-3 border-t border-gray-100">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payment History</p>
+                              <div className="space-y-1">
+                                {sub.paymentHistory.map(p => (
+                                  <div key={p.id} className="flex items-center justify-between text-xs py-1.5 px-3 bg-white rounded-lg border border-gray-100">
+                                    <span className="text-gray-500">{new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    <span className={`font-semibold ${p.status === 'CAPTURED' ? 'text-green-600' : p.status === 'FAILED' ? 'text-red-600' : 'text-gray-600'}`}>
+                                      ₹{(p.amount / 100).toLocaleString()}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${p.status === 'CAPTURED' ? 'bg-green-50 text-green-600' : p.status === 'FAILED' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                      {p.status}
+                                    </span>
+                                    <span className="text-gray-400">{p.method || '—'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

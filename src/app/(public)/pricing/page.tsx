@@ -16,6 +16,7 @@ interface PricingPlan {
   price: number;
   description: string;
   planType: 'FREE' | 'PAID';
+  itemCategory?: 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE';
   bannerBadge?: string | null;
   isOneTime: boolean;
   oneTimePrice?: number | null;
@@ -35,6 +36,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<BillingCycleType>('MONTHLY');
+  const [accessiblePlanIds, setAccessiblePlanIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/pricing').then(r => r.json()).then(data => {
@@ -48,7 +50,14 @@ export default function PricingPage() {
         else if (allCycles.size > 0) setSelectedCycle(Array.from(allCycles)[0] as BillingCycleType);
       }
     }).catch(() => { }).finally(() => setLoading(false));
-  }, []);
+
+    // Fetch user access data (only if authenticated)
+    if (isAuthenticated) {
+      api.purchases.myAccess().then(res => {
+        if (res.data?.accessiblePlanIds) setAccessiblePlanIds(res.data.accessiblePlanIds);
+      }).catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   // Get all available billing cycles across plans
   const availableCycles: BillingCycleType[] = [];
@@ -77,35 +86,59 @@ export default function PricingPage() {
       return;
     }
 
+    // Already has access
+    if (accessiblePlanIds.includes(plan.id)) {
+      router.push('/dashboard');
+      return;
+    }
+
     setSubscribing(plan.id);
     try {
-      // 1. Create subscription/order in backend
-      const res = await api.subscriptions.create(plan.id, cycle);
-      // The backend wraps the result in ApiResponse, so data is at res.data
-      // For one-time: { subscription, subscriptionId, orderId, amount, currency }
-      // For recurring: { subscription, razorpaySubscriptionId, shortUrl }
-      const data = res.data as unknown as {
-        subscription: unknown;
-        // One-time fields
-        orderId?: string;
-        subscriptionId?: string;
-        amount?: number;
-        currency?: string;
-        // Recurring fields
-        razorpaySubscriptionId?: string;
-        shortUrl?: string;
-      };
+      const isPurchaseFlow = (
+        plan.itemCategory === 'PHYSICAL_PRODUCT' ||
+        ((plan.itemCategory === 'DIGITAL_PRODUCT' || plan.itemCategory === 'SERVICE') && plan.isOneTime && cycle === 'ONETIME')
+      );
 
-      if (plan.isOneTime && cycle === 'ONETIME') {
-        const { orderId, amount, currency } = data;
-        if (!orderId) {
-          throw new Error('Order ID not received from server');
-        }
+      if (isPurchaseFlow) {
+        // Use Purchase API (Razorpay Orders)
+        const res = await api.purchases.create(plan.id);
+        const data = res.data as { purchaseId: string; orderId: string; amount: number; currency: string };
+
         await openRazorpayPayment({
-          orderId,
+          orderId: data.orderId,
           planName: plan.name,
-          amount: amount || 0,
-          currency: currency || 'INR',
+          amount: data.amount || 0,
+          currency: data.currency || 'INR',
+          userEmail: user?.email || '',
+          userName: user?.name || '',
+          onSuccess: async (paymentId, ordId, signature) => {
+            // Verify purchase
+            await api.purchases.verify({
+              razorpayPaymentId: paymentId,
+              razorpayOrderId: ordId,
+              razorpaySignature: signature,
+              purchaseId: data.purchaseId,
+            });
+            router.push('/dashboard?payment=success');
+          },
+          onFailure: (error) => {
+            console.error('Purchase Payment Failed:', error);
+            alert(error);
+          }
+        });
+      } else if (plan.isOneTime && cycle === 'ONETIME') {
+        // Legacy one-time subscription flow
+        const res = await api.subscriptions.create(plan.id, cycle);
+        const data = res.data as unknown as {
+          orderId?: string; subscriptionId?: string; amount?: number; currency?: string;
+        };
+        if (!data.orderId) throw new Error('Order ID not received from server');
+
+        await openRazorpayPayment({
+          orderId: data.orderId,
+          planName: plan.name,
+          amount: data.amount || 0,
+          currency: data.currency || 'INR',
           userEmail: user?.email || '',
           userName: user?.name || '',
           onSuccess: (paymentId, ordId, signature) => {
@@ -118,11 +151,12 @@ export default function PricingPage() {
           }
         });
       } else {
-        // Recurring subscription — backend returns razorpaySubscriptionId
-        const rzpSubscriptionId = data.razorpaySubscriptionId;
-        if (!rzpSubscriptionId) {
-          throw new Error('Razorpay subscription ID not received from server');
-        }
+        // Recurring subscription — Razorpay Subscription
+        const res = await api.subscriptions.create(plan.id, cycle);
+        const data = res.data as unknown as {
+          razorpaySubscriptionId?: string; shortUrl?: string;
+        };
+        if (!data.razorpaySubscriptionId) throw new Error('Razorpay subscription ID not received from server');
 
         const price = getPriceForCycle(plan, cycle) || 0;
         const discountedPrice = (plan.discountPercent ?? 0) > 0
@@ -130,7 +164,7 @@ export default function PricingPage() {
           : price;
 
         await openRazorpayCheckout({
-          subscriptionId: rzpSubscriptionId,
+          subscriptionId: data.razorpaySubscriptionId,
           planName: plan.name,
           amount: discountedPrice,
           userEmail: user?.email || '',
@@ -241,13 +275,17 @@ export default function PricingPage() {
 
                     <button
                       onClick={() => handleSubscribe(plan, selectedCycle)}
-                      disabled={subscribing !== null}
-                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${plan.isPopular
-                          ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
-                          : 'sun-gradient text-white shadow-md hover:opacity-90'
+                      disabled={subscribing !== null || accessiblePlanIds.includes(plan.id)}
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${accessiblePlanIds.includes(plan.id)
+                          ? 'bg-green-100 text-green-700 cursor-default'
+                          : plan.isPopular
+                            ? 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg'
+                            : 'sun-gradient text-white shadow-md hover:opacity-90'
                         }`}
                     >
-                      {subscribing === plan.id ? (
+                      {accessiblePlanIds.includes(plan.id) ? (
+                        <><CheckCircle2 className="w-4 h-4" /> Subscribed</>
+                      ) : subscribing === plan.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
@@ -286,15 +324,18 @@ export default function PricingPage() {
                       </ul>
                       <button
                         onClick={() => handleSubscribe(plan, 'ONETIME')}
-                        disabled={subscribing !== null}
-                        className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                        disabled={subscribing !== null || accessiblePlanIds.includes(plan.id)}
+                        className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${accessiblePlanIds.includes(plan.id)
+                            ? 'bg-green-100 text-green-700 cursor-default'
+                            : 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700'
+                          }`}
                       >
-                        {subscribing === plan.id ? (
+                        {accessiblePlanIds.includes(plan.id) ? (
+                          <><CheckCircle2 className="w-4 h-4" /> Purchased</>
+                        ) : subscribing === plan.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <>
-                            Buy and Access for Life
-                          </>
+                          <>Buy and Access for Life</>
                         )}
                       </button>
                     </div>

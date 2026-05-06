@@ -253,6 +253,22 @@ export const api = {
       }),
   },
 
+  // ── Purchases ──────────────────────────────────────
+  purchases: {
+    create: (planId: string, quantity?: number) =>
+      apiFetch<{ purchase: unknown; purchaseId: string; orderId: string; amount: number; currency: string; pricingBreakdown: PricingBreakdown }>('/purchases/create', {
+        method: 'POST',
+        body: JSON.stringify({ planId, quantity }),
+      }),
+    verify: (data: { razorpayPaymentId: string; razorpayOrderId: string; razorpaySignature: string; purchaseId: string }) =>
+      apiFetch('/purchases/verify', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    myPurchases: () => apiFetch<PurchaseItem[]>('/purchases/my-purchases'),
+    myAccess: () => apiFetch<UserAccessData>('/purchases/my-access'),
+  },
+
   // ── Payments ────────────────────────────────────────
   payments: {
     history: (page = 1, limit = 10) =>
@@ -348,6 +364,20 @@ export const api = {
       rates: () => apiFetch<SubscriptionRate[]>('/admin/analytics/rates'),
       paymentIssues: () => apiFetch<PaymentIssuesData>('/admin/analytics/payment-issues'),
     },
+
+    // ── Category Pricing (Admin) ───────────────────────
+    categoryPricing: {
+      all: () => apiFetch<CategoryPricingItem[]>('/admin/category-pricing'),
+      upsert: (data: Partial<CategoryPricingItem> & { itemCategory: string }) =>
+        apiFetch<CategoryPricingItem>('/admin/category-pricing', {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+    },
+
+    // ── Plan Subscribers (Admin) ───────────────────────
+    planSubscribers: (planId: string, page = 1, limit = 20) =>
+      apiFetch<PlanSubscribersData>(`/admin/plans/${planId}/subscribers?page=${page}&limit=${limit}`),
 
     // ── Campaigns ──────────────────────────────────────
     campaigns: {
@@ -533,6 +563,19 @@ export interface PlanItem {
   freeTrialDays?: number | null;
   discountPercent?: number | null;
   discountLabel?: string | null;
+  
+  // Pricing Overrides
+  gstMode?: 'PERCENT' | 'FLAT' | null;
+  gstValue?: number | null;
+  gatewayChargeMode?: 'PERCENT' | 'FLAT' | null;
+  gatewayChargeValue?: number | null;
+  serviceFeeMode?: 'PERCENT' | 'FLAT' | null;
+  serviceFeeValue?: number | null;
+  processingFeeMode?: 'PERCENT' | 'FLAT' | null;
+  processingFeeValue?: number | null;
+  platformChargeMode?: 'PERCENT' | 'FLAT' | null;
+  platformChargeValue?: number | null;
+
   features: PlanFeatureItem[];
   pricing: PlanPricingItem[];
   _count?: { subscriptions: number };
@@ -557,6 +600,19 @@ export interface CreatePlanData {
   freeTrialDays?: number;
   discountPercent?: number;
   discountLabel?: string;
+
+  // Pricing Overrides
+  gstMode?: 'PERCENT' | 'FLAT' | null;
+  gstValue?: number | null;
+  gatewayChargeMode?: 'PERCENT' | 'FLAT' | null;
+  gatewayChargeValue?: number | null;
+  serviceFeeMode?: 'PERCENT' | 'FLAT' | null;
+  serviceFeeValue?: number | null;
+  processingFeeMode?: 'PERCENT' | 'FLAT' | null;
+  processingFeeValue?: number | null;
+  platformChargeMode?: 'PERCENT' | 'FLAT' | null;
+  platformChargeValue?: number | null;
+
   pricing: { billingCycle: BillingCycleType; price: number }[];
   features: { name: string; included: boolean; value?: string; icon?: string; sortOrder?: number }[];
 }
@@ -802,4 +858,92 @@ export interface ReviewItem {
   createdAt: string;
   user?: { id: string; name: string; avatarUrl?: string; email?: string };
   plan?: { id: string; name: string };
+}
+
+// ── Purchase Types ─────────────────────────────────
+
+export interface PricingBreakdown {
+  itemPrice: number;
+  gstAmount: number;
+  gatewayCharge: number;
+  serviceFee: number;
+  processingFee: number;
+  platformCharge: number;
+  unitPrice: number;
+  totalAmount: number;
+  quantity: number;
+}
+
+export interface PurchaseItem {
+  id: string;
+  planId: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  currency: string;
+  status: 'CREATED' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
+  plan: PlanItem;
+  createdAt: string;
+}
+
+export interface UserAccessData {
+  subscriptions: SubscriptionInfo[];
+  purchases: PurchaseItem[];
+  accessiblePlanIds: string[];
+}
+
+// ── Category Pricing Types ─────────────────────────
+
+export type PricingMode = 'PERCENT' | 'FLAT';
+
+export interface CategoryPricingItem {
+  id: string;
+  itemCategory: 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE';
+  gstMode: PricingMode;
+  gstValue: number;
+  gatewayChargeMode: PricingMode;
+  gatewayChargeValue: number;
+  serviceFeeMode: PricingMode;
+  serviceFeeValue: number;
+  processingFeeMode: PricingMode;
+  processingFeeValue: number;
+  platformChargeMode: PricingMode;
+  platformChargeValue: number;
+}
+
+// ── Plan Subscriber Types ──────────────────────────
+
+export interface PlanSubscriberItem {
+  subscriptionId: string;
+  status: string;
+  billingCycle: string;
+  subscribedAt: string;
+  currentPeriodEnd?: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    lastCity?: string;
+    lastState?: string;
+    lastCountry?: string;
+  };
+  location: string;
+  totalPaid: number;
+  totalPaidFormatted: string;
+  paymentHistory: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    method?: string;
+    razorpayPaymentId?: string;
+    createdAt: string;
+  }[];
+}
+
+export interface PlanSubscribersData {
+  plan: { id: string; name: string; slug: string; itemCategory: string };
+  subscribers: PlanSubscriberItem[];
+  meta: { total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
 }

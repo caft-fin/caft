@@ -50,6 +50,18 @@ export function PlanFormModal({ plan, onClose, onSave, loading }: PlanFormModalP
   const [discountPercent, setDiscountPercent] = useState(plan?.discountPercent || 0);
   const [discountLabel, setDiscountLabel] = useState(plan?.discountLabel || '');
 
+  // Advanced Pricing Overrides
+  const [gstMode, setGstMode] = useState<string>(plan?.gstMode || '');
+  const [gstValue, setGstValue] = useState<number | ''>(plan?.gstValue !== null && plan?.gstValue !== undefined ? plan.gstValue : '');
+  const [gatewayChargeMode, setGatewayChargeMode] = useState<string>(plan?.gatewayChargeMode || '');
+  const [gatewayChargeValue, setGatewayChargeValue] = useState<number | ''>(plan?.gatewayChargeValue !== null && plan?.gatewayChargeValue !== undefined ? plan.gatewayChargeValue : '');
+  const [serviceFeeMode, setServiceFeeMode] = useState<string>(plan?.serviceFeeMode || '');
+  const [serviceFeeValue, setServiceFeeValue] = useState<number | ''>(plan?.serviceFeeValue !== null && plan?.serviceFeeValue !== undefined ? plan.serviceFeeValue : '');
+  const [processingFeeMode, setProcessingFeeMode] = useState<string>(plan?.processingFeeMode || '');
+  const [processingFeeValue, setProcessingFeeValue] = useState<number | ''>(plan?.processingFeeValue !== null && plan?.processingFeeValue !== undefined ? plan.processingFeeValue : '');
+  const [platformChargeMode, setPlatformChargeMode] = useState<string>(plan?.platformChargeMode || '');
+  const [platformChargeValue, setPlatformChargeValue] = useState<number | ''>(plan?.platformChargeValue !== null && plan?.platformChargeValue !== undefined ? plan.platformChargeValue : '');
+
   // Pricing durations
   const [enabledCycles, setEnabledCycles] = useState<Set<BillingCycleType>>(() => {
     if (plan?.pricing) return new Set(plan.pricing.map(p => p.billingCycle));
@@ -125,6 +137,19 @@ export function PlanFormModal({ plan, onClose, onSave, loading }: PlanFormModalP
       freeTrialDays: freeTrialEnabled ? freeTrialDays : undefined,
       discountPercent: discountEnabled ? discountPercent : undefined,
       discountLabel: discountEnabled ? discountLabel : undefined,
+      
+      // Pricing Overrides
+      gstMode: gstMode ? (gstMode as 'PERCENT' | 'FLAT') : null,
+      gstValue: gstValue !== '' ? Number(gstValue) : null,
+      gatewayChargeMode: gatewayChargeMode ? (gatewayChargeMode as 'PERCENT' | 'FLAT') : null,
+      gatewayChargeValue: gatewayChargeValue !== '' ? Number(gatewayChargeValue) : null,
+      serviceFeeMode: serviceFeeMode ? (serviceFeeMode as 'PERCENT' | 'FLAT') : null,
+      serviceFeeValue: serviceFeeValue !== '' ? Number(serviceFeeValue) : null,
+      processingFeeMode: processingFeeMode ? (processingFeeMode as 'PERCENT' | 'FLAT') : null,
+      processingFeeValue: processingFeeValue !== '' ? Number(processingFeeValue) : null,
+      platformChargeMode: platformChargeMode ? (platformChargeMode as 'PERCENT' | 'FLAT') : null,
+      platformChargeValue: platformChargeValue !== '' ? Number(platformChargeValue) : null,
+
       pricing: planType === 'PAID' && !isOneTime
         ? Array.from(enabledCycles).map(cycle => ({
             billingCycle: cycle,
@@ -361,6 +386,58 @@ export function PlanFormModal({ plan, onClose, onSave, loading }: PlanFormModalP
             </div>
           </section>
 
+          {/* ── Advanced Pricing Overrides ── */}
+          <section>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Advanced Pricing Overrides</h3>
+            <p className="text-xs text-gray-500 mb-4">Leave fields empty to inherit default values from Category Pricing rules.</p>
+            <div className="space-y-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+              {[
+                { label: 'GST', mode: gstMode, setMode: setGstMode, value: gstValue, setValue: setGstValue },
+                { label: 'Gateway Charge', mode: gatewayChargeMode, setMode: setGatewayChargeMode, value: gatewayChargeValue, setValue: setGatewayChargeValue },
+                { label: 'Service Fee', mode: serviceFeeMode, setMode: setServiceFeeMode, value: serviceFeeValue, setValue: setServiceFeeValue },
+                { label: 'Processing Fee', mode: processingFeeMode, setMode: setProcessingFeeMode, value: processingFeeValue, setValue: setProcessingFeeValue },
+                { label: 'Platform Charge', mode: platformChargeMode, setMode: setPlatformChargeMode, value: platformChargeValue, setValue: setPlatformChargeValue },
+              ].map((field, idx) => (
+                <div key={idx} className="flex items-center gap-4">
+                  <label className="text-sm font-semibold text-gray-700 w-36 shrink-0">{field.label}</label>
+                  <select 
+                    className="text-sm border-gray-200 rounded-lg focus:ring-orange-500 focus:border-orange-500 w-28 bg-white"
+                    value={field.mode}
+                    onChange={e => {
+                      field.setMode(e.target.value);
+                      if (e.target.value === '') field.setValue('');
+                    }}
+                  >
+                    <option value="">Inherit</option>
+                    <option value="PERCENT">Percent</option>
+                    <option value="FLAT">Flat ₹</option>
+                  </select>
+                  {field.mode !== '' && (
+                    <div className="relative flex-1 max-w-[12rem]">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                        {field.mode === 'FLAT' ? '₹' : ''}
+                      </div>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        className={`w-full text-sm border-gray-200 rounded-lg focus:ring-orange-500 focus:border-orange-500 ${field.mode === 'FLAT' ? 'pl-7' : 'pl-3'}`}
+                        value={field.mode === 'PERCENT' ? field.value : (typeof field.value === 'number' ? field.value / 100 : '')}
+                        onChange={e => {
+                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          field.setValue(field.mode === 'PERCENT' ? val : (val === '' ? '' : val * 100));
+                        }}
+                        placeholder={field.mode === 'PERCENT' ? 'e.g. 18' : 'e.g. 50'}
+                      />
+                      {field.mode === 'PERCENT' && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">
             <button type="button" onClick={onClose}
