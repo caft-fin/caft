@@ -153,14 +153,21 @@ export default function SubscriptionManagementPage() {
                 ))}
               </ul>
 
-              <button className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
-                activeSub?.planId === plan.id 
-                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                  : plan.isPopular 
-                    ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-              }`}>
-                {activeSub?.planId === plan.id ? 'Current Plan' : 'Upgrade Plan'}
+              <button
+                onClick={() => window.location.href = '/pricing#plan-' + plan.id}
+                disabled={activeSub?.planId === plan.id}
+                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
+                  activeSub?.planId === plan.id 
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : plan.isPopular 
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                }`}>
+                {activeSub?.planId === plan.id 
+                  ? 'Current Plan' 
+                  : plan.isOneTime 
+                    ? 'Buy Now' 
+                    : 'Upgrade Plan'}
               </button>
             </div>
           ))}
