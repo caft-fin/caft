@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({
         {/* Material Symbols removed in favor of lucide-react */}
       </head>
       <body className="min-h-screen flex flex-col bg-background text-on-background font-body-md selection:bg-primary-container selection:text-on-primary-container">
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

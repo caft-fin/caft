@@ -246,6 +246,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ planId, billingCycle }),
       }),
+    verify: (data: { razorpay_payment_id: string; razorpay_subscription_id: string; razorpay_signature: string }) =>
+      apiFetch('/subscriptions/verify', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     cancel: (reason?: string) =>
       apiFetch('/subscriptions/cancel', {
         method: 'POST',

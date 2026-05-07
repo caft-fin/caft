@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { api, type PlanItem, BILLING_CYCLE_LABELS, type BillingCycleType } from '@/lib/apiClient';
 import { useStore } from '@/store/useStore';
 import { useRouter } from 'next/navigation';
+import { openRazorpayCheckout, openRazorpayPayment } from '@/lib/razorpay';
+import { useToast } from '@/components/ui/Toast';
 import {
   Star, ShieldCheck, ArrowRight, Zap, TrendingUp, Package,
   Monitor, Wrench, Loader2, Check
@@ -31,18 +33,27 @@ function StarRating({ rating }: { rating: number }) {
 
 export default function AlgoIndicatorsPage() {
   const router = useRouter();
-  const isAuthenticated = useStore(s => s.isAuthenticated);
+  const { user, isAuthenticated } = useStore();
+  const { toast } = useToast();
   const [allPlans, setAllPlans] = useState<PlanItem[]>([]);
   const [activeTab, setActiveTab] = useState<Category>('DIGITAL_PRODUCT');
   const [loading, setLoading] = useState(true);
   const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [accessiblePlanIds, setAccessiblePlanIds] = useState<string[]>([]);
 
   useEffect(() => {
     api.plans.list()
       .then(res => setAllPlans((res.data || []) as PlanItem[]))
       .catch(err => console.error('Failed to load products:', err))
       .finally(() => setLoading(false));
-  }, []);
+
+    // Fetch user access data
+    if (isAuthenticated) {
+      api.purchases.myAccess().then(res => {
+        if (res.data?.accessiblePlanIds) setAccessiblePlanIds(res.data.accessiblePlanIds);
+      }).catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   const filteredPlans = allPlans.filter(p => p.itemCategory === activeTab);
 
@@ -59,21 +70,136 @@ export default function AlgoIndicatorsPage() {
 
   const handleBuy = async (plan: PlanItem) => {
     if (!isAuthenticated) {
+      sessionStorage.setItem('caft_post_login_redirect', '/algo-indicators');
       router.push('/login');
       return;
     }
+
+    // Already has access
+    if (accessiblePlanIds.includes(plan.id)) {
+      toast.info('Already Purchased', `You already have access to ${plan.name}.`);
+      return;
+    }
+
     setBuyingId(plan.id);
     try {
-      // For one-time products, use the subscription create endpoint
-      // which handles both recurring and one-time purchases
-      const cycle = plan.isOneTime ? 'ONETIME' : (plan.pricing[0]?.billingCycle || 'MONTHLY');
-      const res = await api.subscriptions.create(plan.id, cycle as BillingCycleType);
-      const data = res.data as { subscriptionId?: string; shortUrl?: string; orderId?: string };
-      if (data.shortUrl) {
-        window.location.href = data.shortUrl;
+      // Determine the correct flow based on plan type
+      const isPurchaseFlow = (
+        plan.itemCategory === 'PHYSICAL_PRODUCT' ||
+        ((plan.itemCategory === 'DIGITAL_PRODUCT' || plan.itemCategory === 'SERVICE') && plan.isOneTime)
+      );
+
+      if (isPurchaseFlow) {
+        // ── Purchase Flow (One-time / Physical — Razorpay Orders) ──
+        const res = await api.purchases.create(plan.id);
+        const data = res.data as { purchaseId: string; orderId: string; amount: number; currency: string };
+
+        if (!data.orderId) {
+          toast.error('Payment Error', 'Order could not be created. Please try again.');
+          return;
+        }
+
+        await openRazorpayPayment({
+          orderId: data.orderId,
+          planName: plan.name,
+          amount: data.amount || 0,
+          currency: data.currency || 'INR',
+          userEmail: user?.email || '',
+          userName: user?.name || '',
+          onSuccess: async (paymentId, ordId, signature) => {
+            const toastId = toast.loading('Verifying Payment', 'Please wait while we confirm your purchase...');
+
+            try {
+              await api.purchases.verify({
+                razorpayPaymentId: paymentId,
+                razorpayOrderId: ordId,
+                razorpaySignature: signature,
+                purchaseId: data.purchaseId,
+              });
+
+              toast.success('Purchase Complete! 🎉', `You now have access to ${plan.name}.`);
+              // Refresh access list
+              api.purchases.myAccess().then(r => {
+                if (r.data?.accessiblePlanIds) setAccessiblePlanIds(r.data.accessiblePlanIds);
+              }).catch(() => {});
+            } catch (verifyError) {
+              console.error('Payment verification failed:', verifyError);
+              toast.warning(
+                'Payment Received',
+                'Your payment was received but verification is pending. Your access will be activated shortly.'
+              );
+            }
+          },
+          onFailure: (error) => {
+            if (error === '__USER_CANCELLED__') {
+              toast.info('Payment Cancelled', 'No charges were made. You can try again anytime.');
+            } else {
+              toast.error('Payment Failed', error);
+            }
+          }
+        });
+
+      } else {
+        // ── Recurring Subscription Flow ────────────────────
+        const cycle = (plan.pricing[0]?.billingCycle || 'MONTHLY') as BillingCycleType;
+        const res = await api.subscriptions.create(plan.id, cycle);
+        const data = res.data as unknown as {
+          razorpaySubscriptionId?: string; shortUrl?: string;
+        };
+
+        if (!data.razorpaySubscriptionId) {
+          toast.error('Payment Error', 'Subscription could not be created. Please try again.');
+          return;
+        }
+
+        const price = plan.pricing.length > 0
+          ? plan.pricing.reduce((min, p) => p.price < min.price ? p : min, plan.pricing[0]).price
+          : 0;
+        const discountedPrice = (plan.discountPercent ?? 0) > 0
+          ? Math.round(price * (1 - (plan.discountPercent || 0) / 100))
+          : price;
+
+        await openRazorpayCheckout({
+          subscriptionId: data.razorpaySubscriptionId,
+          planName: plan.name,
+          amount: discountedPrice,
+          userEmail: user?.email || '',
+          userName: user?.name || '',
+          onSuccess: async (paymentId, subId, signature) => {
+            const toastId = toast.loading('Verifying Subscription', 'Activating your subscription...');
+
+            try {
+              await api.subscriptions.verify({
+                razorpay_payment_id: paymentId,
+                razorpay_subscription_id: subId,
+                razorpay_signature: signature,
+              });
+
+              toast.success('Subscription Active! 🎉', `Welcome to ${plan.name}.`);
+              // Refresh access list
+              api.purchases.myAccess().then(r => {
+                if (r.data?.accessiblePlanIds) setAccessiblePlanIds(r.data.accessiblePlanIds);
+              }).catch(() => {});
+            } catch (verifyError) {
+              console.error('Subscription verification failed:', verifyError);
+              toast.warning(
+                'Payment Received',
+                'Your subscription will activate shortly.'
+              );
+            }
+          },
+          onFailure: (error) => {
+            if (error === '__USER_CANCELLED__') {
+              toast.info('Payment Cancelled', 'No charges were made. You can subscribe anytime.');
+            } else {
+              toast.error('Payment Failed', error);
+            }
+          }
+        });
       }
     } catch (err: any) {
-      alert(err?.message || 'Failed to initiate purchase. Please try again.');
+      const message = err?.message || 'Failed to initiate purchase. Please try again.';
+      toast.error('Something Went Wrong', message);
     } finally {
       setBuyingId(null);
     }
@@ -177,10 +303,16 @@ export default function AlgoIndicatorsPage() {
                   <div className="mt-auto pt-5 border-t border-gray-100">
                     <button
                       onClick={() => handleBuy(plan)}
-                      disabled={buyingId === plan.id}
-                      className="w-full py-3.5 rounded-xl text-white font-bold sun-gradient shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+                      disabled={buyingId === plan.id || accessiblePlanIds.includes(plan.id)}
+                      className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                        accessiblePlanIds.includes(plan.id)
+                          ? 'bg-green-100 text-green-700 cursor-default'
+                          : 'text-white sun-gradient shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 disabled:opacity-60'
+                      }`}
                     >
-                      {buyingId === plan.id ? (
+                      {accessiblePlanIds.includes(plan.id) ? (
+                        <><Check className="w-4 h-4" /> Purchased</>
+                      ) : buyingId === plan.id ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                       ) : (
                         <><span>{plan.isOneTime ? 'Buy Now' : 'Subscribe Now'}</span><ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
