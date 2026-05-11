@@ -121,6 +121,16 @@ export default function AdminCoursesPage() {
   };
 
   // Curriculum Handlers
+  const handleCreateEmptySection = async () => {
+    if (!newSectionTitle.trim() || !selectedCourse) return;
+    try {
+      await api.dataPool.admin.createSection({ courseId: selectedCourse.id, title: newSectionTitle });
+      setNewSectionTitle('');
+      setEditingSectionId(null);
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
   const handleUpdateSection = async (sectionId: string) => {
     try {
       await api.dataPool.admin.updateSection(sectionId, { title: editSectionTitle });
@@ -436,8 +446,12 @@ export default function AdminCoursesPage() {
                     setSelectedCourse(course);
                     setUploadSuccess('');
                     setUploadError('');
-                    setUploadedUrl('');
-                    setSelectedSectionId(course.sections?.[0]?.id || 'new');
+                    setUploadProgress(0);
+                    if (course.sections && course.sections.length > 0) {
+                      setSelectedSectionId(course.sections[0].id);
+                    } else {
+                      setSelectedSectionId('new');
+                    }
                   }}
                   className={`w-full text-left p-4 rounded-xl border transition-all flex gap-4 items-center ${
                     selectedCourse?.id === course.id
@@ -658,6 +672,11 @@ export default function AdminCoursesPage() {
                     setSelectedCourse(course);
                     setEditingSectionId(null);
                     setEditingVideoId(null);
+                    if (course.sections && course.sections.length > 0) {
+                      setSelectedSectionId(course.sections[0].id);
+                    } else {
+                      setSelectedSectionId('new');
+                    }
                   }}
                   className={`w-full text-left p-4 rounded-xl border transition-all flex gap-4 items-center ${
                     selectedCourse?.id === course.id
@@ -711,14 +730,31 @@ export default function AdminCoursesPage() {
                   </button>
                 </div>
 
+                {editingSectionId === 'new-empty' && (
+                  <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
+                    <input 
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold focus:outline-none focus:border-orange-500"
+                      value={newSectionTitle}
+                      onChange={(e) => setNewSectionTitle(e.target.value)}
+                      placeholder="e.g. Module 1: Introduction"
+                    />
+                    <button onClick={handleCreateEmptySection} disabled={!newSectionTitle.trim()} className="px-6 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 disabled:opacity-50">Save</button>
+                    <button onClick={() => { setEditingSectionId(null); setNewSectionTitle(''); }} className="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300">Cancel</button>
+                  </div>
+                )}
+
                 <div className="space-y-6">
                   {!selectedCourse.sections || selectedCourse.sections.length === 0 ? (
                     <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400">
                       <p className="font-medium">No sections yet</p>
-                      <p className="text-sm mt-1">Go to Media Upload to add your first video and section.</p>
+                      <button onClick={() => { setEditingSectionId('new-empty'); setNewSectionTitle(''); }} className="mt-4 px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors">
+                        + Create First Section
+                      </button>
                     </div>
                   ) : (
-                    selectedCourse.sections.map((section: any) => (
+                    <>
+                      {selectedCourse.sections.map((section: any) => (
                       <div key={section.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                         {/* Section Header */}
                         <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between group">
@@ -844,7 +880,15 @@ export default function AdminCoursesPage() {
                           )}
                         </div>
                       </div>
-                    ))
+                      ))}
+                      
+                      <button 
+                        onClick={() => { setEditingSectionId('new-empty'); setNewSectionTitle(''); }}
+                        className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 font-bold hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-5 h-5" /> Add New Section
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
