@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { api, type AdminStatsOverview, type AdminUserItem } from '@/lib/apiClient';
+import { api, type AdminStatsOverview, type AdminUserItem, type RevenueAnalytics, type PlanItem, ApiError } from '@/lib/apiClient';
 import { 
   TrendingUp, Users, Shield, Filter, Download, Edit2, Trash2, 
   CreditCard, Activity, Landmark, CircleDollarSign, AlertTriangle, 
-  Loader2, Skull, ArrowRight
+  Loader2, Skull, ArrowRight, Package, Zap, ShoppingBag
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,6 +16,13 @@ export default function AdminDashboardPage() {
   const [recentUsers, setRecentUsers] = useState<AdminUserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [revenueBreakdown, setRevenueBreakdown] = useState<{
+    subscriptions: number;
+    digitalProducts: number;
+    physicalProducts: number;
+    services: number;
+  } | null>(null);
+
   const loadData = async (isInitial = false) => {
     try {
       if (!isInitial) setLoading(true);
@@ -26,6 +33,37 @@ export default function AdminDashboardPage() {
       ]);
       setStats(statsRes.data);
       setRecentUsers(usersRes.data);
+
+      // Fetch revenue breakdown by category
+      try {
+        const [revenueRes, plansRes] = await Promise.all([
+          api.admin.analytics.revenue(),
+          api.admin.plans.all(),
+        ]);
+        const revenueData = revenueRes.data as RevenueAnalytics;
+        const allPlans = plansRes.data as PlanItem[];
+        
+        // Build a planId -> itemCategory map
+        const planCategoryMap = new Map<string, string>();
+        allPlans.forEach(p => planCategoryMap.set(p.id, p.itemCategory));
+
+        // Calculate revenue by category from revenueByPlan
+        const categoryRevenue = { subscriptions: 0, digitalProducts: 0, physicalProducts: 0, services: 0 };
+        if (revenueData.revenueByPlan) {
+          revenueData.revenueByPlan.forEach(rp => {
+            const category = planCategoryMap.get(rp.planId) || 'SUBSCRIPTION';
+            switch (category) {
+              case 'SUBSCRIPTION': categoryRevenue.subscriptions += rp.revenue; break;
+              case 'DIGITAL_PRODUCT': categoryRevenue.digitalProducts += rp.revenue; break;
+              case 'PHYSICAL_PRODUCT': categoryRevenue.physicalProducts += rp.revenue; break;
+              case 'SERVICE': categoryRevenue.services += rp.revenue; break;
+            }
+          });
+        }
+        setRevenueBreakdown(categoryRevenue);
+      } catch {
+        // Non-critical — the main stats already loaded
+      }
     } catch (err) {
       console.error('Failed to load admin stats:', err);
       setError('Failed to load data from the server. Please check that the backend is running.');
@@ -41,6 +79,25 @@ export default function AdminDashboardPage() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 
+  const handleEditUser = (userId: string) => {
+    // Navigate to management page with user selected
+    window.location.assign(`/admin/management`);
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string, isSuperAdminUser: boolean) => {
+    if (isSuperAdminUser) {
+      alert('Cannot deactivate the Superadmin account.');
+      return;
+    }
+    if (!confirm(`Deactivate user "${userName}"?`)) return;
+    try {
+      await api.admin.deleteUser(userId);
+      loadData();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Failed to deactivate user');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -48,6 +105,9 @@ export default function AdminDashboardPage() {
       </div>
     );
   }
+
+  // Revenue is stored in paise in the DB — convert to rupees for display
+  const totalRevenueRupees = (stats?.totalRevenue ?? 0) / 100;
 
   return (
     <div className="space-y-stack-lg">
@@ -74,15 +134,49 @@ export default function AdminDashboardPage() {
 
       {/* Bento Grid for Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+        {/* Total Revenue Card with Category Breakdown */}
         <div className="md:col-span-2 glass-card rounded-2xl p-6 shadow-sm overflow-hidden relative group">
           <div className="absolute -right-10 -top-10 w-40 h-40 bg-orange-100/50 rounded-full group-hover:scale-110 transition-transform duration-700"></div>
           <h3 className="font-headline-sm text-headline-sm text-on-background mb-4">Total Revenue</h3>
           <div className="flex items-baseline gap-2">
-            <span className="text-display-lg font-bold text-orange-600">{formatCurrency(stats?.totalRevenue ?? 0)}</span>
+            <span className="text-display-lg font-bold text-orange-600">{formatCurrency(totalRevenueRupees)}</span>
           </div>
           <p className="text-on-surface-variant text-body-md mt-2">
             From {stats?.activeSubscriptions ?? 0} active subscriptions
           </p>
+          {/* Revenue Breakdown by Category */}
+          {revenueBreakdown && (
+            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 relative z-10">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-3.5 h-3.5 text-blue-500" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Subscriptions</p>
+                  <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.subscriptions / 100)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Package className="w-3.5 h-3.5 text-purple-500" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Digital Products</p>
+                  <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.digitalProducts / 100)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-3.5 h-3.5 text-green-500" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Physical Products</p>
+                  <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.physicalProducts / 100)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 text-orange-500" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Services</p>
+                  <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.services / 100)}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="glass-card rounded-2xl p-6 shadow-sm">
@@ -158,8 +252,21 @@ export default function AdminDashboardPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      <button className="p-2 hover:text-orange-500 transition-colors"><Edit2 className="w-5 h-5" /></button>
-                      <button className="p-2 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
+                      <button
+                        onClick={() => handleEditUser(user.id)}
+                        className="p-2 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors"
+                        title="View/Edit user"
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.id, user.name, user.isSuperAdmin)}
+                        disabled={user.isSuperAdmin}
+                        className="p-2 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={user.isSuperAdmin ? 'Cannot deactivate Superadmin' : 'Deactivate user'}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -192,9 +299,9 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
-            <a href="/admin/plans" className="w-full bg-orange-600 text-white font-button py-3 rounded-xl hover:bg-orange-700 transition-colors shadow-lg shadow-orange-500/10 block text-center">
+            <Link href="/admin/subscriptions" className="w-full bg-orange-600 text-white font-button py-3 rounded-xl hover:bg-orange-700 transition-colors shadow-lg shadow-orange-500/10 block text-center">
               Manage Subscription Plans
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -246,7 +353,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-bold text-on-background">{formatCurrency(stats?.totalRevenue ?? 0)}</p>
+                <p className="font-bold text-on-background">{formatCurrency(totalRevenueRupees)}</p>
               </div>
             </div>
           </div>

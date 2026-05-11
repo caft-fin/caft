@@ -429,6 +429,48 @@ export const api = {
   public: {
     settings: () => apiFetch<Record<string, string>>('/settings/public'),
   },
+
+  // ── Data Pool (Course Platform) ──────────────────────
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  dataPool: {
+    // Public courses
+    listCourses: (params?: { difficulty?: string; featured?: boolean }) => {
+      const q = new URLSearchParams();
+      if (params?.difficulty) q.append('difficulty', params.difficulty);
+      if (params?.featured) q.append('featured', 'true');
+      return apiFetch<any[]>(`/dp/courses?${q.toString()}`);
+    },
+    getCourse: (courseId: string) => apiFetch<any>(`/dp/course/${courseId}`),
+    getCourseBySlug: (slug: string) => apiFetch<any>(`/dp/course/slug/${slug}`),
+
+    // User dashboard
+    getDashboard: () => apiFetch<any>('/dp/user/dashboard'),
+
+    // Video playback
+    getVideoStream: (videoId: string) => apiFetch<any>(`/dp/video/${videoId}/stream`),
+    updateProgress: (videoId: string, data: { watchedSeconds: number; resumePositionSeconds: number; completionPercentage: number }) =>
+      apiFetch<any>(`/dp/video/${videoId}/progress`, { method: 'POST', body: JSON.stringify(data) }),
+    trackEvent: (videoId: string, data: { eventType: string; positionSeconds: number; metadata?: any }) =>
+      apiFetch<any>(`/dp/video/${videoId}/event`, { method: 'POST', body: JSON.stringify(data) }),
+    
+    // Feedback
+    submitFeedback: (courseId: string, data: { rating: number; reviewText?: string }) =>
+      apiFetch<any>(`/dp/course/${courseId}/feedback`, { method: 'POST', body: JSON.stringify(data) }),
+
+    // Admin
+    admin: {
+      getUploadUrl: (courseId: string, folder: string, filename: string, contentType: string) =>
+        apiFetch<any>('/dp/admin/upload', { method: 'POST', body: JSON.stringify({ courseId, folder, filename, contentType }) }),
+      platformMetrics: () => apiFetch<any>('/dp/admin/analytics/platform'),
+      videoAnalytics: (videoId: string) => apiFetch<any>(`/dp/admin/analytics/video/${videoId}`),
+      courseUsers: (courseId: string) => apiFetch<any>(`/dp/admin/analytics/course/${courseId}/users`),
+      userHistory: (userId: string) => apiFetch<any>(`/dp/admin/analytics/user/${userId}/history`),
+      inactiveUsers: (days = 7) => apiFetch<any>(`/dp/admin/nudge/inactive?days=${days}`),
+      closeToCompletion: (threshold = 80) => apiFetch<any>(`/dp/admin/nudge/close-to-completion?threshold=${threshold}`),
+      triggerAggregation: () => apiFetch<any>('/dp/admin/analytics/aggregate', { method: 'POST' }),
+    }
+  },
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 };
 
 // ── Shared Types ──────────────────────────────────────
@@ -438,7 +480,7 @@ export type BillingCycleType =
   | 'QUARTERLY' | 'HALFYEARLY' | 'ANNUALLY' | 'ONETIME';
 
 export const BILLING_CYCLE_LABELS: Record<BillingCycleType, string> = {
-  DAILY: 'Weekly (7-day)',
+  DAILY: 'Daily',
   WEEKLY: 'Weekly',
   BIWEEKLY: 'Bi-weekly',
   MONTHLY: 'Monthly',

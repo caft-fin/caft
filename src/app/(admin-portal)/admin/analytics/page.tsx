@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { api, type AdminStatsOverview } from '@/lib/apiClient';
-import { Banknote, ArrowUpRight, Users, TrendingUp, UserMinus, PieChart, LineChart, Loader2, AlertTriangle } from 'lucide-react';
+import { Banknote, ArrowUpRight, Users, TrendingUp, UserMinus, PieChart, LineChart, Loader2, AlertTriangle, BookOpen } from 'lucide-react';
+import { LearningAnalytics } from './LearningAnalytics';
 
 export default function AdminAnalyticsPage() {
+  const [activeTab, setActiveTab] = useState<'platform' | 'learning'>('platform');
   const [stats, setStats] = useState<AdminStatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,7 +40,8 @@ export default function AdminAnalyticsPage() {
 
   const totalUsers = stats?.totalUsers ?? 0;
   const activeUsers = stats?.activeUsers ?? 0;
-  const totalRevenue = stats?.totalRevenue ?? 0;
+  // Revenue is stored in paise in the database — convert to rupees for display
+  const totalRevenue = (stats?.totalRevenue ?? 0) / 100;
   const activeSubscriptions = stats?.activeSubscriptions ?? 0;
   const securityScore = stats?.securityScore ?? 0;
   const inactiveUsers = totalUsers - activeUsers;
@@ -59,8 +62,34 @@ export default function AdminAnalyticsPage() {
         </div>
       )}
 
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-stack-lg">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 mb-8 bg-gray-50 p-1.5 rounded-2xl inline-flex">
+        <button
+          onClick={() => setActiveTab('platform')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'platform' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Financial Platform
+        </button>
+        <button
+          onClick={() => setActiveTab('learning')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'learning' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          Learning Academy
+        </button>
+      </div>
+
+      {activeTab === 'learning' ? (
+        <LearningAnalytics />
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-stack-lg">
         <div className="glass-card p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
           <div className="flex justify-between items-start mb-4 relative z-10">
             <div>
@@ -219,6 +248,8 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
       </div>
+        </div>
+      )}
     </>
   );
 }

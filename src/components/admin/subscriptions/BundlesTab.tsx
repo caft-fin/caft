@@ -12,10 +12,6 @@ export function BundlesTab({ plans }: { plans: PlanItem[] }) {
   const [editingBundle, setEditingBundle] = useState<PlanBundleItem | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchBundles();
-  }, []);
-
   const fetchBundles = async () => {
     try {
       const res = await api.admin.bundles.all();
@@ -26,6 +22,10 @@ export function BundlesTab({ plans }: { plans: PlanItem[] }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchBundles();
+  }, []);
 
   const handleSave = async (data: CreateBundleData) => {
     setSaving(true);
@@ -38,8 +38,9 @@ export function BundlesTab({ plans }: { plans: PlanItem[] }) {
       setShowForm(false);
       setEditingBundle(null);
       await fetchBundles();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save bundle');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert(error.message || 'Failed to save bundle');
     } finally {
       setSaving(false);
     }
@@ -50,8 +51,9 @@ export function BundlesTab({ plans }: { plans: PlanItem[] }) {
     try {
       await api.admin.bundles.delete(id);
       await fetchBundles();
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete bundle');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert(error.message || 'Failed to delete bundle');
     }
   };
 

@@ -70,10 +70,11 @@ export default function AlgoIndicatorsPage() {
       const res = await api.subscriptions.create(plan.id, cycle as BillingCycleType);
       const data = res.data as { subscriptionId?: string; shortUrl?: string; orderId?: string };
       if (data.shortUrl) {
-        window.location.href = data.shortUrl;
+        window.location.assign(data.shortUrl);
       }
-    } catch (err: any) {
-      alert(err?.message || 'Failed to initiate purchase. Please try again.');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert(error?.message || 'Failed to initiate purchase. Please try again.');
     } finally {
       setBuyingId(null);
     }

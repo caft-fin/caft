@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import { clearTokens } from '@/lib/apiClient';
-import { LayoutDashboard, BarChart3, Users, Mail, CreditCard, User, Settings, Skull, LogOut, Package, Star } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Users, Mail, CreditCard, User, Settings, Skull, LogOut, Package, Star, BookOpen } from 'lucide-react';
 import Image from 'next/image';
 
 export function AdminSidebar() {
@@ -19,6 +19,7 @@ export function AdminSidebar() {
     { name: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
     { name: 'Management', path: '/admin/management', icon: Users },
     { name: 'Emails', path: '/admin/emails', icon: Mail },
+    { name: 'Courses', path: '/admin/courses', icon: BookOpen },
     { name: 'Catalog', path: '/admin/subscriptions', icon: Package },
     { name: 'Reviews', path: '/admin/reviews', icon: Star },
     { name: 'Profile', path: '/admin/profile', icon: User },

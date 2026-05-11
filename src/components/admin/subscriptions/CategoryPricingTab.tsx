@@ -17,10 +17,6 @@ export function CategoryPricingTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPricing();
-  }, []);
-
   const fetchPricing = async () => {
     try {
       const res = await api.admin.categoryPricing.all();
@@ -32,14 +28,19 @@ export function CategoryPricingTab() {
     }
   };
 
+  useEffect(() => {
+    fetchPricing();
+  }, []);
+
   const handleSave = async (itemCategory: 'SUBSCRIPTION' | 'DIGITAL_PRODUCT' | 'PHYSICAL_PRODUCT' | 'SERVICE', data: Partial<CategoryPricingItem>) => {
     setSaving(itemCategory);
     try {
       await api.admin.categoryPricing.upsert({ ...data, itemCategory });
       await fetchPricing();
       alert('Saved successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Failed to save');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert(error.message || 'Failed to save');
     } finally {
       setSaving(null);
     }
@@ -97,6 +98,7 @@ function PricingCard({
 }) {
   const [data, setData] = useState(initialData);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateField = (field: keyof CategoryPricingItem, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };

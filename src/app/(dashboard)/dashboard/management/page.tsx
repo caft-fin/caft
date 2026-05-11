@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/apiClient';
 import type { SubscriptionInfo, PaymentItem, PlanItem } from '@/lib/apiClient';
 import { 
-  CreditCard, CheckCircle2, AlertCircle, Calendar, 
-  Download, ArrowRight, Star, ShieldCheck, Zap,
-  Loader2, RefreshCw
+  CreditCard, CheckCircle2, 
+  Download, ArrowRight, Star, Zap,
+  Loader2, RefreshCw, X
 } from 'lucide-react';
 
 
@@ -15,30 +15,140 @@ export default function SubscriptionManagementPage() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelModal, setCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const [subRes, paymentsRes, plansRes] = await Promise.all([
+        api.subscriptions.active().catch(() => ({ data: null })),
+        api.payments.history(1, 10).catch(() => ({ data: [] })),
+        api.plans.list().catch(() => ({ data: [] }))
+      ]);
+      
+      setActiveSub(subRes.data as SubscriptionInfo | null);
+      setPayments(paymentsRes.data as PaymentItem[]);
+      setPlans((plansRes.data as PlanItem[]).filter(p => p.isActive !== false));
+    } catch (err) {
+      console.error('Failed to fetch subscription data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [subRes, paymentsRes, plansRes] = await Promise.all([
-          api.subscriptions.active().catch(() => ({ data: null })),
-          api.payments.history(1, 10).catch(() => ({ data: [] })),
-          api.plans.list().catch(() => ({ data: [] }))
-        ]);
-        
-        setActiveSub(subRes.data as SubscriptionInfo | null);
-        setPayments(paymentsRes.data as PaymentItem[]);
-        setPlans((plansRes.data as PlanItem[]).filter(p => p.isActive !== false));
-      } catch (err) {
-        console.error('Failed to fetch subscription data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
   }, []);
 
   const formatCurrency = (amount: number) => 
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount / 100);
+
+  const handleCancelPlan = async () => {
+    setCancelling(true);
+    try {
+      await api.subscriptions.cancel(cancelReason || undefined);
+      setCancelModal(false);
+      setCancelReason('');
+      // Refresh data to reflect cancellation
+      setLoading(true);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to cancel subscription:', err);
+      alert('Failed to cancel subscription. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleDownloadInvoice = (payment: PaymentItem) => {
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${payment.id.split('-')[0]}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 0 auto; padding: 40px 20px; color: #333; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #ea580c; padding-bottom: 20px; }
+          .logo { font-size: 24px; font-weight: 800; color: #ea580c; }
+          .invoice-label { font-size: 28px; font-weight: 300; color: #999; text-transform: uppercase; letter-spacing: 4px; }
+          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+          .meta-block label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; display: block; margin-bottom: 4px; }
+          .meta-block p { font-size: 14px; font-weight: 500; margin: 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 700; border-bottom: 2px solid #f0f0f0; }
+          td { padding: 16px; font-size: 14px; border-bottom: 1px solid #f5f5f5; }
+          .amount { text-align: right; font-weight: 700; }
+          .total-row td { font-size: 16px; font-weight: 700; border-top: 2px solid #ea580c; border-bottom: none; color: #ea580c; }
+          .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+          .status-success { background: #dcfce7; color: #16a34a; }
+          .status-failed { background: #fee2e2; color: #dc2626; }
+          .status-pending { background: #fff7ed; color: #ea580c; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center; font-size: 12px; color: #999; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">CAFT Financial</div>
+          <div class="invoice-label">Invoice</div>
+        </div>
+        <div class="meta">
+          <div class="meta-block">
+            <label>Invoice Number</label>
+            <p>${payment.id.split('-')[0].toUpperCase()}</p>
+          </div>
+          <div class="meta-block">
+            <label>Date</label>
+            <p>${new Intl.DateTimeFormat('en-US', { month: 'long', day: '2-digit', year: 'numeric' }).format(new Date(payment.createdAt))}</p>
+          </div>
+          <div class="meta-block">
+            <label>Payment Method</label>
+            <p>${payment.method || 'Online Payment'}</p>
+          </div>
+          <div class="meta-block">
+            <label>Status</label>
+            <p><span class="status ${payment.status === 'SUCCESS' || payment.status === 'PAID' || payment.status === 'CAPTURED' ? 'status-success' : payment.status === 'FAILED' ? 'status-failed' : 'status-pending'}">${payment.status}</span></p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Currency</th>
+              <th class="amount">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${payment.description || 'Subscription Payment'}</td>
+              <td>${payment.currency || 'INR'}</td>
+              <td class="amount">₹${(payment.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Total</td>
+              <td class="amount">₹${(payment.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>CAFT Financial • This is a computer-generated invoice and does not require a signature.</p>
+          <p>Transaction ID: ${payment.id}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(invoiceHtml);
+      printWindow.document.close();
+      // Auto-trigger print dialog after a short delay
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
 
   if (loading) {
     return (
@@ -59,7 +169,10 @@ export default function SubscriptionManagementPage() {
           </p>
         </div>
         {activeSub && (
-          <button className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors text-sm flex items-center gap-2 w-fit">
+          <button
+            onClick={() => setCancelModal(true)}
+            className="px-5 py-2.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 font-medium rounded-xl transition-colors text-sm flex items-center gap-2 w-fit"
+          >
             <RefreshCw className="w-4 h-4" /> Cancel Plan
           </button>
         )}
@@ -215,14 +328,18 @@ export default function SubscriptionManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          payment.status === 'SUCCESS' || payment.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                          payment.status === 'SUCCESS' || payment.status === 'PAID' || payment.status === 'CAPTURED' ? 'bg-green-100 text-green-700' :
                           payment.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
                         }`}>
                           {payment.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="p-2 text-gray-400 hover:text-orange-600 transition-colors rounded-lg hover:bg-orange-50">
+                        <button
+                          onClick={() => handleDownloadInvoice(payment)}
+                          className="p-2 text-gray-400 hover:text-orange-600 transition-colors rounded-lg hover:bg-orange-50"
+                          title="Download Invoice"
+                        >
                           <Download className="w-4 h-4" />
                         </button>
                       </td>
@@ -243,6 +360,52 @@ export default function SubscriptionManagementPage() {
         </div>
       </div>
 
+      {/* Cancel Plan Modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Cancel Subscription</h3>
+              <button onClick={() => setCancelModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <p className="text-sm text-red-700 font-medium">
+                Are you sure you want to cancel your <strong>{activeSub?.plan?.name}</strong> subscription? 
+                You will lose access to premium features at the end of your current billing period.
+              </p>
+            </div>
+            <div className="mb-6">
+              <label className="text-sm font-bold text-gray-600 block mb-2">
+                Reason for cancellation (optional)
+              </label>
+              <textarea
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/30 resize-none"
+                rows={3}
+                placeholder="Tell us why you're leaving..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelModal(false)}
+                className="flex-1 py-3 rounded-xl font-semibold text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                Keep Plan
+              </button>
+              <button
+                onClick={handleCancelPlan}
+                disabled={cancelling}
+                className="flex-1 py-3 rounded-xl font-semibold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {cancelling ? <><Loader2 className="w-4 h-4 animate-spin" /> Cancelling...</> : 'Cancel Subscription'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
