@@ -466,6 +466,13 @@ export const api = {
     admin: {
       getUploadUrl: (courseId: string, folder: string, filename: string, contentType: string) =>
         apiFetch<any>('/dp/admin/upload', { method: 'POST', body: JSON.stringify({ courseId, folder, filename, contentType }) }),
+      listAllCourses: () => apiFetch<any[]>('/dp/admin/courses'),
+      createCourse: (data: { title: string; description: string; price: number; difficulty: string }) =>
+        apiFetch<any>('/dp/admin/courses', { method: 'POST', body: JSON.stringify(data) }),
+      updateCourse: (courseId: string, data: { title?: string; description?: string; price?: number; difficulty?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+        apiFetch<any>(`/dp/admin/courses/${courseId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      deleteCourse: (courseId: string) =>
+        apiFetch<any>(`/dp/admin/courses/${courseId}`, { method: 'DELETE' }),
       platformMetrics: () => apiFetch<any>('/dp/admin/analytics/platform'),
       videoAnalytics: (videoId: string) => apiFetch<any>(`/dp/admin/analytics/video/${videoId}`),
       courseUsers: (courseId: string) => apiFetch<any>(`/dp/admin/analytics/course/${courseId}/users`),

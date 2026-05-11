@@ -74,13 +74,18 @@ export default function AdminManagementPage() {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
-    if (!confirm('Deactivate this user?')) return;
+  const handleToggleStatus = async (id: string, currentlyActive: boolean) => {
+    const action = currentlyActive ? 'Deactivate' : 'Activate';
+    if (!confirm(`${action} this user?`)) return;
     try {
-      await api.admin.deleteUser(id);
+      if (currentlyActive) {
+        await api.admin.deleteUser(id);
+      } else {
+        await api.admin.updateUser(id, { isActive: true });
+      }
       loadUsers(meta.page);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Failed to deactivate');
+      alert(err instanceof ApiError ? err.message : `Failed to ${action.toLowerCase()}`);
     }
   };
 
@@ -230,12 +235,16 @@ export default function AdminManagementPage() {
                       <td className="px-8 py-6 text-sm text-gray-500">{planName}</td>
                       <td className="px-10 py-6 text-right">
                         <button
-                          onClick={() => handleDeactivate(user.id)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleStatus(user.id, user.isActive); }}
                           disabled={user.isSuperAdmin}
-                          className="p-2.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={user.isSuperAdmin ? 'Cannot deactivate Superadmin' : 'Deactivate user'}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                            user.isActive
+                              ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                          }`}
+                          title={user.isSuperAdmin ? 'Cannot modify Superadmin' : user.isActive ? 'Deactivate user' : 'Activate user'}
                         >
-                          <MoreVertical className="w-6 h-6" />
+                          {user.isActive ? 'Deactivate' : 'Activate'}
                         </button>
                       </td>
                     </tr>
