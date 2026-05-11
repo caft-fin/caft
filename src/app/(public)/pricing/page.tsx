@@ -9,6 +9,7 @@ import { api, BILLING_CYCLE_LABELS, BILLING_CYCLE_SHORT } from '@/lib/apiClient'
 import type { BillingCycleType } from '@/lib/apiClient';
 import { openRazorpayCheckout, openRazorpayPayment } from '@/lib/razorpay';
 import { useStore } from '@/store/useStore';
+import { useToast } from '@/components/ui/Toast';
 
 interface PricingPlan {
   id: string;
@@ -32,6 +33,7 @@ interface PricingPlan {
 export default function PricingPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useStore();
+  const { toast } = useToast();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<string | null>(null);
@@ -100,9 +102,14 @@ export default function PricingPage() {
       );
 
       if (isPurchaseFlow) {
-        // Use Purchase API (Razorpay Orders)
+        // ── Purchase Flow (Razorpay Orders) ────────────────
         const res = await api.purchases.create(plan.id);
         const data = res.data as { purchaseId: string; orderId: string; amount: number; currency: string };
+
+        if (!data.orderId) {
+          toast.error('Payment Error', 'Order could not be created. Please try again.');
+          return;
+        }
 
         await openRazorpayPayment({
           orderId: data.orderId,
@@ -112,27 +119,53 @@ export default function PricingPage() {
           userEmail: user?.email || '',
           userName: user?.name || '',
           onSuccess: async (paymentId, ordId, signature) => {
-            // Verify purchase
-            await api.purchases.verify({
-              razorpayPaymentId: paymentId,
-              razorpayOrderId: ordId,
-              razorpaySignature: signature,
-              purchaseId: data.purchaseId,
-            });
-            router.push('/dashboard?payment=success');
+            // Show loading toast while verifying
+            const toastId = toast.loading('Verifying Payment', 'Please wait while we confirm your purchase...');
+
+            try {
+              await api.purchases.verify({
+                razorpayPaymentId: paymentId,
+                razorpayOrderId: ordId,
+                razorpaySignature: signature,
+                purchaseId: data.purchaseId,
+              });
+
+              toast.success('Payment Successful! 🎉', `You now have access to ${plan.name}.`);
+              
+              // Brief delay to show success toast, then redirect
+              setTimeout(() => {
+                router.push('/dashboard?payment=success');
+              }, 1500);
+            } catch (verifyError) {
+              console.error('Payment verification failed:', verifyError);
+              toast.warning(
+                'Payment Received',
+                'Your payment was received but verification is pending. Your access will be activated shortly.'
+              );
+              setTimeout(() => {
+                router.push('/dashboard?payment=pending');
+              }, 2000);
+            }
           },
           onFailure: (error) => {
-            console.error('Purchase Payment Failed:', error);
-            alert(error);
+            if (error === '__USER_CANCELLED__') {
+              toast.info('Payment Cancelled', 'No charges were made. You can try again anytime.');
+            } else {
+              toast.error('Payment Failed', error);
+            }
           }
         });
+
       } else if (plan.isOneTime && cycle === 'ONETIME') {
-        // Legacy one-time subscription flow
+        // ── Legacy One-Time Subscription Flow ──────────────
         const res = await api.subscriptions.create(plan.id, cycle);
         const data = res.data as unknown as {
           orderId?: string; subscriptionId?: string; amount?: number; currency?: string;
         };
-        if (!data.orderId) throw new Error('Order ID not received from server');
+        if (!data.orderId) {
+          toast.error('Payment Error', 'Order could not be created. Please try again.');
+          return;
+        }
 
         await openRazorpayPayment({
           orderId: data.orderId,
@@ -141,22 +174,51 @@ export default function PricingPage() {
           currency: data.currency || 'INR',
           userEmail: user?.email || '',
           userName: user?.name || '',
-          onSuccess: (paymentId, ordId, signature) => {
-            console.log('One-time Payment Successful:', { paymentId, ordId, signature });
-            router.push('/dashboard?payment=success');
+          onSuccess: async (paymentId, ordId, signature) => {
+            const toastId = toast.loading('Verifying Payment', 'Please wait while we activate your access...');
+
+            try {
+              // Verify one-time payment
+              await api.purchases.verify({
+                razorpayPaymentId: paymentId,
+                razorpayOrderId: ordId,
+                razorpaySignature: signature,
+                purchaseId: (data as any).subscriptionId || '',
+              });
+
+              toast.success('Purchase Complete! 🎉', `You now have lifetime access to ${plan.name}.`);
+              setTimeout(() => {
+                router.push('/dashboard?payment=success');
+              }, 1500);
+            } catch {
+              toast.warning(
+                'Payment Received',
+                'Your payment was received but verification is pending. Your access will be activated shortly.'
+              );
+              setTimeout(() => {
+                router.push('/dashboard?payment=pending');
+              }, 2000);
+            }
           },
           onFailure: (error) => {
-            console.error('One-time Payment Failed:', error);
-            alert(error);
+            if (error === '__USER_CANCELLED__') {
+              toast.info('Payment Cancelled', 'No charges were made. You can try again anytime.');
+            } else {
+              toast.error('Payment Failed', error);
+            }
           }
         });
+
       } else {
-        // Recurring subscription — Razorpay Subscription
+        // ── Recurring Subscription Flow ────────────────────
         const res = await api.subscriptions.create(plan.id, cycle);
         const data = res.data as unknown as {
           razorpaySubscriptionId?: string; shortUrl?: string;
         };
-        if (!data.razorpaySubscriptionId) throw new Error('Razorpay subscription ID not received from server');
+        if (!data.razorpaySubscriptionId) {
+          toast.error('Payment Error', 'Subscription could not be created. Please try again.');
+          return;
+        }
 
         const price = getPriceForCycle(plan, cycle) || 0;
         const discountedPrice = (plan.discountPercent ?? 0) > 0
@@ -169,19 +231,47 @@ export default function PricingPage() {
           amount: discountedPrice,
           userEmail: user?.email || '',
           userName: user?.name || '',
-          onSuccess: (paymentId, subId, signature) => {
-            console.log('Subscription Successful:', { paymentId, subId, signature });
-            router.push('/dashboard?payment=success');
+          onSuccess: async (paymentId, subId, signature) => {
+            const toastId = toast.loading('Verifying Subscription', 'Please wait while we activate your subscription...');
+
+            try {
+              // ── CRITICAL FIX: Actually verify the subscription payment ──
+              // This was missing before! Without this call, the subscription
+              // stays in CREATED status and never transitions to AUTHENTICATED.
+              await api.subscriptions.verify({
+                razorpay_payment_id: paymentId,
+                razorpay_subscription_id: subId,
+                razorpay_signature: signature,
+              });
+
+              toast.success('Subscription Active! 🎉', `Welcome to ${plan.name}. Your subscription is now active.`);
+              setTimeout(() => {
+                router.push('/dashboard?payment=success');
+              }, 1500);
+            } catch (verifyError) {
+              console.error('Subscription verification failed:', verifyError);
+              toast.warning(
+                'Payment Received',
+                'Your payment was received. Subscription will activate shortly via webhook.'
+              );
+              setTimeout(() => {
+                router.push('/dashboard?payment=pending');
+              }, 2000);
+            }
           },
           onFailure: (error) => {
-            console.error('Subscription Failed:', error);
-            alert(error);
+            if (error === '__USER_CANCELLED__') {
+              toast.info('Payment Cancelled', 'No charges were made. You can subscribe anytime.');
+            } else {
+              toast.error('Payment Failed', error);
+            }
           }
         });
       }
     } catch (error: unknown) {
       console.error('Subscription error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to initiate subscription');
+      const message = error instanceof Error ? error.message : 'Failed to initiate payment';
+      toast.error('Something Went Wrong', message);
     } finally {
       setSubscribing(null);
     }
