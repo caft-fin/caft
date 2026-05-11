@@ -469,10 +469,22 @@ export const api = {
       listAllCourses: () => apiFetch<any[]>('/dp/admin/courses'),
       createCourse: (data: { title: string; description: string; price: number; difficulty: string }) =>
         apiFetch<any>('/dp/admin/courses', { method: 'POST', body: JSON.stringify(data) }),
-      updateCourse: (courseId: string, data: { title?: string; description?: string; price?: number; difficulty?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+      updateCourse: (courseId: string, data: { title?: string; description?: string; price?: number; difficulty?: string; isPublished?: boolean; isFeatured?: boolean; thumbnailUrl?: string; trailerUrl?: string; trailerS3Key?: string }) =>
         apiFetch<any>(`/dp/admin/courses/${courseId}`, { method: 'PUT', body: JSON.stringify(data) }),
       deleteCourse: (courseId: string) =>
         apiFetch<any>(`/dp/admin/courses/${courseId}`, { method: 'DELETE' }),
+      createSection: (data: { courseId: string; title: string; orderIndex?: number }) =>
+        apiFetch<any>('/dp/admin/sections', { method: 'POST', body: JSON.stringify(data) }),
+      updateSection: (sectionId: string, data: { title?: string; orderIndex?: number }) =>
+        apiFetch<any>(`/dp/admin/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      deleteSection: (sectionId: string) =>
+        apiFetch<any>(`/dp/admin/sections/${sectionId}`, { method: 'DELETE' }),
+      createVideo: (data: { courseId: string; sectionId: string; title: string; description?: string; s3Key: string; durationSeconds?: number; isPreview?: boolean; previewDurationSeconds?: number; orderIndex?: number; thumbnailUrl?: string }) =>
+        apiFetch<any>('/dp/admin/videos', { method: 'POST', body: JSON.stringify(data) }),
+      updateVideo: (videoId: string, data: { title?: string; description?: string; durationSeconds?: number; isPreview?: boolean; previewDurationSeconds?: number; orderIndex?: number; isPublished?: boolean; thumbnailUrl?: string }) =>
+        apiFetch<any>(`/dp/admin/videos/${videoId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      deleteVideo: (videoId: string) =>
+        apiFetch<any>(`/dp/admin/videos/${videoId}`, { method: 'DELETE' }),
       platformMetrics: () => apiFetch<any>('/dp/admin/analytics/platform'),
       videoAnalytics: (videoId: string) => apiFetch<any>(`/dp/admin/analytics/video/${videoId}`),
       courseUsers: (courseId: string) => apiFetch<any>(`/dp/admin/analytics/course/${courseId}/users`),

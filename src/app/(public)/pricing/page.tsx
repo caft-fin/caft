@@ -183,7 +183,7 @@ export default function PricingPage() {
                 razorpayPaymentId: paymentId,
                 razorpayOrderId: ordId,
                 razorpaySignature: signature,
-                purchaseId: (data as any).subscriptionId || '',
+                purchaseId: data.subscriptionId || '',
               });
 
               toast.success('Purchase Complete! 🎉', `You now have lifetime access to ${plan.name}.`);

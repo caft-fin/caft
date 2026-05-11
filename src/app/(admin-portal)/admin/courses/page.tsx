@@ -5,7 +5,7 @@ import { api, ApiError } from '@/lib/apiClient';
 import {
   Loader2, UploadCloud, CheckCircle, AlertTriangle, FileVideo,
   Image as ImageIcon, FileText, Copy, BookOpen, Play, Plus, X,
-  Trash2, Eye, EyeOff, Star, Users
+  Trash2, Eye, EyeOff, Star, Users, Layers, Edit3, GripVertical
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -16,8 +16,8 @@ export default function AdminCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Tab state: 'courses' or 'upload'
-  const [activeTab, setActiveTab] = useState<'courses' | 'upload'>('courses');
+  // Tab state: 'courses' or 'upload' or 'curriculum'
+  const [activeTab, setActiveTab] = useState<'courses' | 'upload' | 'curriculum'>('courses');
 
   // Course creation modal
   const [showCreate, setShowCreate] = useState(false);
@@ -28,12 +28,24 @@ export default function AdminCoursesPage() {
   // Upload state
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [folder, setFolder] = useState<'thumbnails' | 'preview_videos' | 'full_videos' | 'certificates'>('full_videos');
+  const [folder, setFolder] = useState<'thumbnails' | 'preview_videos' | 'full_videos'>('full_videos');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadedUrl, setUploadedUrl] = useState('');
+
+  // Video metadata state
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoDescription, setVideoDescription] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [newSectionTitle, setNewSectionTitle] = useState('');
+
+  // Curriculum Manager state
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editSectionTitle, setEditSectionTitle] = useState('');
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editVideoForm, setEditVideoForm] = useState({ title: '', description: '', isPreview: false });
 
   const loadCourses = async () => {
     try {
@@ -51,6 +63,13 @@ export default function AdminCoursesPage() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (selectedCourse) {
+      const updated = courses.find(c => c.id === selectedCourse.id);
+      if (updated) setSelectedCourse(updated);
+    }
+  }, [courses]);
 
   const handleCreateCourse = async () => {
     setCreateError('');
@@ -101,6 +120,46 @@ export default function AdminCoursesPage() {
     }
   };
 
+  // Curriculum Handlers
+  const handleUpdateSection = async (sectionId: string) => {
+    try {
+      await api.dataPool.admin.updateSection(sectionId, { title: editSectionTitle });
+      setEditingSectionId(null);
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    if (!confirm('Delete section and all its videos?')) return;
+    try {
+      await api.dataPool.admin.deleteSection(sectionId);
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleUpdateVideo = async (videoId: string) => {
+    try {
+      await api.dataPool.admin.updateVideo(videoId, { ...editVideoForm });
+      setEditingVideoId(null);
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm('Delete this video?')) return;
+    try {
+      await api.dataPool.admin.deleteVideo(videoId);
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleToggleVideoPublish = async (videoId: string, isPublished: boolean) => {
+    try {
+      await api.dataPool.admin.updateVideo(videoId, { isPublished: !isPublished });
+      loadCourses();
+    } catch (err: any) { alert(err.message); }
+  };
+
   const handleUpload = async () => {
     if (!selectedCourse || !file) return;
 
@@ -118,7 +177,7 @@ export default function AdminCoursesPage() {
         file.type
       );
 
-      const { uploadUrl, publicUrl } = data;
+      const { uploadUrl, publicUrl, fileKey } = data;
 
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', uploadUrl, true);
@@ -131,11 +190,47 @@ export default function AdminCoursesPage() {
         }
       };
 
-      xhr.onload = () => {
+      xhr.onload = async () => {
         if (xhr.status === 200 || xhr.status === 201) {
-          setUploadSuccess('File uploaded successfully!');
-          setUploadedUrl(publicUrl);
-          setFile(null);
+          setUploadSuccess('File uploaded successfully! Saving to database...');
+          try {
+            if (folder === 'thumbnails') {
+              await api.dataPool.admin.updateCourse(selectedCourse.id, { thumbnailUrl: publicUrl });
+            } else if (folder === 'preview_videos') {
+              await api.dataPool.admin.updateCourse(selectedCourse.id, { trailerUrl: publicUrl, trailerS3Key: fileKey });
+            } else if (folder === 'full_videos') {
+              let secId = selectedSectionId;
+              if (secId === 'new') {
+                const secRes = await api.dataPool.admin.createSection({ courseId: selectedCourse.id, title: newSectionTitle });
+                secId = secRes.data.id;
+              }
+              await api.dataPool.admin.createVideo({
+                courseId: selectedCourse.id,
+                sectionId: secId,
+                title: videoTitle,
+                description: videoDescription,
+                s3Key: fileKey,
+              });
+            }
+            setUploadSuccess('Upload and database save complete!');
+            setUploadedUrl(publicUrl);
+            setFile(null);
+            setVideoTitle('');
+            setVideoDescription('');
+            setNewSectionTitle('');
+            
+            // Reload courses to update sections
+            loadCourses();
+            
+            // Auto-navigate to the next upload tab for better UX
+            if (folder === 'full_videos') {
+              setFolder('preview_videos');
+            } else if (folder === 'preview_videos') {
+              setFolder('thumbnails');
+            }
+          } catch (err: any) {
+            setUploadError(`File uploaded, but failed to save to database: ${err.message}`);
+          }
         } else {
           setUploadError(`Upload failed with status: ${xhr.status}`);
         }
@@ -198,6 +293,13 @@ export default function AdminCoursesPage() {
         >
           <UploadCloud className="w-4 h-4 inline mr-2" />
           Media Upload
+        </button>
+        <button
+          onClick={() => setActiveTab('curriculum')}
+          className={`px-6 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'curriculum' ? 'bg-orange-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        >
+          <Layers className="w-4 h-4 inline mr-2" />
+          Curriculum
         </button>
         <button
           onClick={() => { setShowCreate(true); setCreateError(''); }}
@@ -335,6 +437,7 @@ export default function AdminCoursesPage() {
                     setUploadSuccess('');
                     setUploadError('');
                     setUploadedUrl('');
+                    setSelectedSectionId(course.sections?.[0]?.id || 'new');
                   }}
                   className={`w-full text-left p-4 rounded-xl border transition-all flex gap-4 items-center ${
                     selectedCourse?.id === course.id
@@ -388,7 +491,6 @@ export default function AdminCoursesPage() {
                         { id: 'full_videos', label: 'Full Video', icon: FileVideo },
                         { id: 'preview_videos', label: 'Preview Video', icon: Play },
                         { id: 'thumbnails', label: 'Thumbnail', icon: ImageIcon },
-                        { id: 'certificates', label: 'Certificate', icon: FileText },
                       ].map((type) => {
                         const Icon = type.icon;
                         return (
@@ -410,6 +512,56 @@ export default function AdminCoursesPage() {
                   </div>
 
                   <div>
+                    {folder === 'full_videos' && (
+                      <div className="space-y-4 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <h4 className="font-bold text-sm text-gray-700">Video Details</h4>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Section</label>
+                          <select
+                            value={selectedSectionId}
+                            onChange={(e) => setSelectedSectionId(e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors cursor-pointer"
+                          >
+                            {selectedCourse.sections?.map((sec: any) => (
+                              <option key={sec.id} value={sec.id}>{sec.title}</option>
+                            ))}
+                            <option value="new">+ Create New Section</option>
+                          </select>
+                        </div>
+                        {selectedSectionId === 'new' && (
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-1">New Section Title</label>
+                            <input
+                              type="text"
+                              value={newSectionTitle}
+                              onChange={(e) => setNewSectionTitle(e.target.value)}
+                              placeholder="e.g. Module 1: Introduction"
+                              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Video Title</label>
+                          <input
+                            type="text"
+                            value={videoTitle}
+                            onChange={(e) => setVideoTitle(e.target.value)}
+                            placeholder="e.g. 1. Welcome to the Course"
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Description (Optional)</label>
+                          <textarea
+                            value={videoDescription}
+                            onChange={(e) => setVideoDescription(e.target.value)}
+                            placeholder="Short description of the video..."
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors resize-none h-20"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <label className="block text-sm font-bold text-gray-700 mb-2">Select File</label>
                     <input
                       type="file"
@@ -426,7 +578,7 @@ export default function AdminCoursesPage() {
                   <div className="pt-4 border-t border-gray-100">
                     <button
                       onClick={handleUpload}
-                      disabled={!file || uploading}
+                      disabled={!file || uploading || (folder === 'full_videos' && (!videoTitle || (selectedSectionId === 'new' && !newSectionTitle)))}
                       className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {uploading ? (
@@ -484,6 +636,215 @@ export default function AdminCoursesPage() {
                         </div>
                       )}
                     </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Curriculum Tab */}
+      {activeTab === 'curriculum' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Course List */}
+          <div className="lg:col-span-1 glass-card p-6 rounded-2xl border border-gray-100 flex flex-col h-[70vh] overflow-hidden">
+            <h3 className="font-bold text-lg mb-4">Select Course</h3>
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+              {courses.length > 0 ? courses.map((course) => (
+                <button
+                  key={course.id}
+                  onClick={() => {
+                    setSelectedCourse(course);
+                    setEditingSectionId(null);
+                    setEditingVideoId(null);
+                  }}
+                  className={`w-full text-left p-4 rounded-xl border transition-all flex gap-4 items-center ${
+                    selectedCourse?.id === course.id
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-100 bg-white hover:border-orange-200 hover:bg-orange-50/30'
+                  }`}
+                >
+                  {course.thumbnailUrl ? (
+                    <Image
+                      src={course.thumbnailUrl}
+                      alt={course.title}
+                      width={48}
+                      height={48}
+                      className="rounded-lg object-cover w-12 h-12"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-gray-400" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-bold text-on-surface line-clamp-1">{course.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">{course.totalSections} Sections</p>
+                  </div>
+                </button>
+              )) : (
+                <p className="text-gray-500 text-sm text-center py-4">No courses found.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Curriculum Editor */}
+          <div className="lg:col-span-2 glass-card p-8 rounded-[2rem] shadow-sm border border-gray-100 h-[70vh] overflow-y-auto custom-scrollbar">
+            {!selectedCourse ? (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
+                <Layers className="w-16 h-16 mb-4 opacity-50" />
+                <p className="font-medium">Select a course to manage its curriculum</p>
+              </div>
+            ) : (
+              <div className="animate-in fade-in duration-300">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-2xl font-bold text-on-surface">{selectedCourse.title} - Curriculum</h3>
+                    <p className="text-gray-500 text-sm mt-1">{selectedCourse.sections?.length || 0} Sections</p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('upload')}
+                    className="px-4 py-2 bg-orange-100 text-orange-700 font-bold text-sm rounded-lg hover:bg-orange-200 transition-colors"
+                  >
+                    + Upload New Video
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {!selectedCourse.sections || selectedCourse.sections.length === 0 ? (
+                    <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400">
+                      <p className="font-medium">No sections yet</p>
+                      <p className="text-sm mt-1">Go to Media Upload to add your first video and section.</p>
+                    </div>
+                  ) : (
+                    selectedCourse.sections.map((section: any) => (
+                      <div key={section.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        {/* Section Header */}
+                        <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between group">
+                          {editingSectionId === section.id ? (
+                            <div className="flex items-center gap-2 flex-1 mr-4">
+                              <input 
+                                type="text"
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm font-bold focus:outline-none focus:border-orange-500"
+                                value={editSectionTitle}
+                                onChange={(e) => setEditSectionTitle(e.target.value)}
+                              />
+                              <button onClick={() => handleUpdateSection(section.id)} className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600">Save</button>
+                              <button onClick={() => setEditingSectionId(null)} className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300">Cancel</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
+                              <h4 className="font-bold text-gray-800">{section.title}</h4>
+                            </div>
+                          )}
+                          
+                          {editingSectionId !== section.id && (
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => { setEditingSectionId(section.id); setEditSectionTitle(section.title); }}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 rounded bg-white border border-gray-200"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteSection(section.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 rounded bg-white border border-gray-200"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Videos List */}
+                        <div className="p-2 space-y-2 bg-gray-50/30">
+                          {!section.videos || section.videos.length === 0 ? (
+                            <p className="text-xs text-gray-400 p-2 italic text-center">No videos in this section</p>
+                          ) : (
+                            section.videos.map((video: any) => (
+                              <div key={video.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:border-gray-300 transition-colors group">
+                                {editingVideoId === video.id ? (
+                                  <div className="flex-1 space-y-3 mr-4">
+                                    <input 
+                                      type="text"
+                                      placeholder="Video Title"
+                                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm font-bold focus:outline-none focus:border-orange-500"
+                                      value={editVideoForm.title}
+                                      onChange={(e) => setEditVideoForm({...editVideoForm, title: e.target.value})}
+                                    />
+                                    <textarea 
+                                      placeholder="Description"
+                                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-orange-500 resize-none h-16"
+                                      value={editVideoForm.description}
+                                      onChange={(e) => setEditVideoForm({...editVideoForm, description: e.target.value})}
+                                    />
+                                    <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+                                      <input 
+                                        type="checkbox"
+                                        checked={editVideoForm.isPreview}
+                                        onChange={(e) => setEditVideoForm({...editVideoForm, isPreview: e.target.checked})}
+                                        className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                      />
+                                      Is Preview Video?
+                                    </label>
+                                    <div className="flex gap-2 pt-2">
+                                      <button onClick={() => handleUpdateVideo(video.id)} className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600">Save Video</button>
+                                      <button onClick={() => setEditingVideoId(null)} className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300">Cancel</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex items-start gap-3">
+                                      <div className="mt-0.5">
+                                        <FileVideo className="w-4 h-4 text-orange-400" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-bold text-gray-700">{video.title}</p>
+                                        <div className="flex gap-2 items-center mt-1">
+                                          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono">
+                                            {Math.floor(video.durationSeconds / 60)}:{(video.durationSeconds % 60).toString().padStart(2, '0')}
+                                          </span>
+                                          {video.isPreview && (
+                                            <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold border border-blue-100">
+                                              PREVIEW
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        onClick={() => handleToggleVideoPublish(video.id, video.isPublished)}
+                                        className={`p-1.5 rounded border transition-colors ${video.isPublished ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100' : 'text-gray-400 border-gray-200 bg-white hover:bg-gray-50'}`}
+                                        title={video.isPublished ? 'Unpublish Video' : 'Publish Video'}
+                                      >
+                                        {video.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                      </button>
+                                      <button 
+                                        onClick={() => { setEditingVideoId(video.id); setEditVideoForm({ title: video.title, description: video.description || '', isPreview: video.isPreview }); }}
+                                        className="p-1.5 text-gray-500 hover:text-blue-600 rounded bg-white border border-gray-200"
+                                        title="Edit Video"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteVideo(video.id)}
+                                        className="p-1.5 text-gray-500 hover:text-red-600 rounded bg-white border border-gray-200"
+                                        title="Delete Video"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
