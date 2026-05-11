@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { api, type AdminStatsOverview, type AdminUserItem, type RevenueAnalytics, type PlanItem, ApiError } from '@/lib/apiClient';
-import { 
-  TrendingUp, Users, Shield, Filter, Download, Edit2, Trash2, 
-  CreditCard, Activity, Landmark, CircleDollarSign, AlertTriangle, 
+import {
+  TrendingUp, Users, Shield, Filter, Download, Edit2, Trash2,
+  CreditCard, Activity, Landmark, CircleDollarSign, AlertTriangle,
   Loader2, Skull, ArrowRight, Package, Zap, ShoppingBag
 } from 'lucide-react';
 import Link from 'next/link';
@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
         ]);
         const revenueData = revenueRes.data as RevenueAnalytics;
         const allPlans = plansRes.data as PlanItem[];
-        
+
         // Build a planId -> itemCategory map
         const planCategoryMap = new Map<string, string>();
         allPlans.forEach(p => planCategoryMap.set(p.id, p.itemCategory));
@@ -157,21 +157,21 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <Package className="w-3.5 h-3.5 text-purple-500" />
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Digital Products</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Courses</p>
                   <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.digitalProducts / 100)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-3.5 h-3.5 text-green-500" />
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Physical Products</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Indicators</p>
                   <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.physicalProducts / 100)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-orange-500" />
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Services</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Algos</p>
                   <p className="text-sm font-bold text-gray-800">{formatCurrency(revenueBreakdown.services / 100)}</p>
                 </div>
               </div>

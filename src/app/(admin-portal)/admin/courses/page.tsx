@@ -27,17 +27,19 @@ export default function AdminCoursesPage() {
 
   // Upload state
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [folder, setFolder] = useState<'thumbnails' | 'preview_videos' | 'full_videos'>('full_videos');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [uploadedUrl, setUploadedUrl] = useState('');
+  const [uploadStep, setUploadStep] = useState<'upload' | 'review'>('upload');
+  const [reviewVideo, setReviewVideo] = useState<any | null>(null);
 
   // Video metadata state
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [newSectionTitle, setNewSectionTitle] = useState('');
 
@@ -171,80 +173,93 @@ export default function AdminCoursesPage() {
   };
 
   const handleUpload = async () => {
-    if (!selectedCourse || !file) return;
+    if (!selectedCourse || !videoFile || !thumbnailFile || !videoTitle.trim()) {
+      setUploadError('Please fill out all fields and select both video and thumbnail files.');
+      return;
+    }
 
     try {
       setUploading(true);
       setUploadProgress(0);
       setUploadError('');
       setUploadSuccess('');
-      setUploadedUrl('');
 
-      const { data } = await api.dataPool.admin.getUploadUrl(
+      // 1. Get Video Upload URL
+      const vFolder = isPreview ? 'preview_videos' : 'full_videos';
+      const { data: vData } = await api.dataPool.admin.getUploadUrl(
         selectedCourse.id,
-        folder,
-        file.name,
-        file.type
+        vFolder,
+        videoFile.name,
+        videoFile.type
       );
+      const { uploadUrl: vUploadUrl, publicUrl: vPublicUrl, fileKey: vFileKey } = vData;
 
-      const { uploadUrl, publicUrl, fileKey } = data;
-
+      // 2. XHR for Video with progress
       const xhr = new XMLHttpRequest();
-      xhr.open('PUT', uploadUrl, true);
-      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.open('PUT', vUploadUrl, true);
+      xhr.setRequestHeader('Content-Type', videoFile.type);
 
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = (e.loaded / e.total) * 100;
-          setUploadProgress(percentComplete);
-        }
+        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 90)); // 90% for video
       };
 
       xhr.onload = async () => {
         if (xhr.status === 200 || xhr.status === 201) {
-          setUploadSuccess('File uploaded successfully! Saving to database...');
           try {
-            if (folder === 'thumbnails') {
-              await api.dataPool.admin.updateCourse(selectedCourse.id, { thumbnailUrl: publicUrl });
-            } else if (folder === 'preview_videos') {
-              await api.dataPool.admin.updateCourse(selectedCourse.id, { trailerUrl: publicUrl, trailerS3Key: fileKey });
-            } else if (folder === 'full_videos') {
-              let secId = selectedSectionId;
-              if (secId === 'new') {
-                const secRes = await api.dataPool.admin.createSection({ courseId: selectedCourse.id, title: newSectionTitle });
-                secId = secRes.data.id;
-              }
-              await api.dataPool.admin.createVideo({
-                courseId: selectedCourse.id,
-                sectionId: secId,
-                title: videoTitle,
-                description: videoDescription,
-                s3Key: fileKey,
-              });
-            }
-            setUploadSuccess('Upload and database save complete!');
-            setUploadedUrl(publicUrl);
-            setFile(null);
-            setVideoTitle('');
-            setVideoDescription('');
-            setNewSectionTitle('');
+            setUploadProgress(95);
+            // 3. Upload Thumbnail
+            const { data: tData } = await api.dataPool.admin.getUploadUrl(
+              selectedCourse.id,
+              'thumbnails',
+              thumbnailFile.name,
+              thumbnailFile.type
+            );
             
-            // Reload courses to update sections
+            await fetch(tData.uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': thumbnailFile.type },
+              body: thumbnailFile
+            });
+
+            setUploadProgress(98);
+
+            // 4. Create Section if needed
+            let secId = selectedSectionId;
+            if (secId === 'new') {
+              const secRes = await api.dataPool.admin.createSection({ courseId: selectedCourse.id, title: newSectionTitle });
+              secId = secRes.data.id;
+            }
+
+            // 5. Create Video in DB
+            const vidRes = await api.dataPool.admin.createVideo({
+              courseId: selectedCourse.id,
+              sectionId: secId,
+              title: videoTitle,
+              description: videoDescription,
+              s3Key: vFileKey,
+              isPreview,
+              thumbnailUrl: tData.publicUrl
+            });
+
+            setUploadProgress(100);
+            setUploadSuccess('Upload successful!');
+            setUploading(false);
+            
+            setReviewVideo({
+              ...vidRes.data,
+              publicUrl: vPublicUrl,
+              thumbnailUrl: tData.publicUrl
+            });
+            setUploadStep('review');
             loadCourses();
-            
-            // Auto-navigate to the next upload tab for better UX
-            if (folder === 'full_videos') {
-              setFolder('preview_videos');
-            } else if (folder === 'preview_videos') {
-              setFolder('thumbnails');
-            }
           } catch (err: any) {
-            setUploadError(`File uploaded, but failed to save to database: ${err.message}`);
+            setUploading(false);
+            setUploadError(err.message || 'Failed to save video details');
           }
         } else {
+          setUploading(false);
           setUploadError(`Upload failed with status: ${xhr.status}`);
         }
-        setUploading(false);
       };
 
       xhr.onerror = () => {
@@ -252,7 +267,7 @@ export default function AdminCoursesPage() {
         setUploading(false);
       };
 
-      xhr.send(file);
+      xhr.send(videoFile);
 
     } catch (err: any) {
       console.error('Upload flow error:', err);
@@ -261,10 +276,23 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(uploadedUrl);
-    alert('URL copied to clipboard!');
+  const handlePublishReview = async () => {
+    if (!reviewVideo) return;
+    try {
+      await api.dataPool.admin.updateVideo(reviewVideo.id, { isPublished: true });
+      alert('Video published successfully!');
+      setReviewVideo(null);
+      setUploadStep('upload');
+      setVideoFile(null);
+      setThumbnailFile(null);
+      setVideoTitle('');
+      setVideoDescription('');
+      loadCourses();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
+
 
   if (loading) {
     return (
@@ -497,161 +525,215 @@ export default function AdminCoursesPage() {
                   <p className="text-gray-500 text-sm mt-1">ID: {selectedCourse.id}</p>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Upload Destination</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        { id: 'full_videos', label: 'Full Video', icon: FileVideo },
-                        { id: 'preview_videos', label: 'Preview Video', icon: Play },
-                        { id: 'thumbnails', label: 'Thumbnail', icon: ImageIcon },
-                      ].map((type) => {
-                        const Icon = type.icon;
-                        return (
-                          <button
-                            key={type.id}
-                            onClick={() => setFolder(type.id as any)}
-                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
-                              folder === type.id
-                                ? 'border-orange-500 bg-orange-50 text-orange-600'
-                                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:border-gray-300'
-                            }`}
-                          >
-                            <Icon className="w-6 h-6 mb-2" />
-                            <span className="text-xs font-bold">{type.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                {/* Inner Tabs for Media Upload */}
+                <div className="flex gap-4 mb-8 border-b border-gray-100 pb-2">
+                  <button
+                    onClick={() => setUploadStep('upload')}
+                    className={`pb-2 font-bold transition-all ${uploadStep === 'upload' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Upload Media
+                  </button>
+                  <button
+                    onClick={() => setUploadStep('review')}
+                    className={`pb-2 font-bold transition-all ${uploadStep === 'review' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Review and Publish
+                  </button>
+                </div>
 
-                  <div>
-                    {folder === 'full_videos' && (
-                      <div className="space-y-4 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <h4 className="font-bold text-sm text-gray-700">Video Details</h4>
+                {uploadStep === 'upload' ? (
+                  <div className="space-y-6">
+                    <div className="space-y-4 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <h4 className="font-bold text-sm text-gray-700">Video Details</h4>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1">Section</label>
+                        <select
+                          value={selectedSectionId}
+                          onChange={(e) => setSelectedSectionId(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors cursor-pointer"
+                        >
+                          <option value="" disabled>Select a section</option>
+                          {selectedCourse.sections?.map((sec: any) => (
+                            <option key={sec.id} value={sec.id}>{sec.title}</option>
+                          ))}
+                          <option value="new">+ Create New Section</option>
+                        </select>
+                      </div>
+                      {selectedSectionId === 'new' && (
                         <div>
-                          <label className="block text-xs font-bold text-gray-600 mb-1">Section</label>
-                          <select
-                            value={selectedSectionId}
-                            onChange={(e) => setSelectedSectionId(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors cursor-pointer"
-                          >
-                            {selectedCourse.sections?.map((sec: any) => (
-                              <option key={sec.id} value={sec.id}>{sec.title}</option>
-                            ))}
-                            <option value="new">+ Create New Section</option>
-                          </select>
-                        </div>
-                        {selectedSectionId === 'new' && (
-                          <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-1">New Section Title</label>
-                            <input
-                              type="text"
-                              value={newSectionTitle}
-                              onChange={(e) => setNewSectionTitle(e.target.value)}
-                              placeholder="e.g. Module 1: Introduction"
-                              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 mb-1">Video Title</label>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">New Section Title</label>
                           <input
                             type="text"
-                            value={videoTitle}
-                            onChange={(e) => setVideoTitle(e.target.value)}
-                            placeholder="e.g. 1. Welcome to the Course"
+                            value={newSectionTitle}
+                            onChange={(e) => setNewSectionTitle(e.target.value)}
+                            placeholder="e.g. Module 1: Introduction"
                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 mb-1">Description (Optional)</label>
-                          <textarea
-                            value={videoDescription}
-                            onChange={(e) => setVideoDescription(e.target.value)}
-                            placeholder="Short description of the video..."
-                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors resize-none h-20"
-                          />
+                      )}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1">Video Title</label>
+                        <input
+                          type="text"
+                          value={videoTitle}
+                          onChange={(e) => setVideoTitle(e.target.value)}
+                          placeholder="e.g. 1. Welcome to the Course"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1">Description (Optional)</label>
+                        <textarea
+                          value={videoDescription}
+                          onChange={(e) => setVideoDescription(e.target.value)}
+                          placeholder="Short description of the video..."
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors resize-none h-20"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isPreview"
+                          checked={isPreview}
+                          onChange={(e) => setIsPreview(e.target.checked)}
+                          className="w-4 h-4 text-orange-600 bg-white border-gray-300 rounded focus:ring-orange-500 cursor-pointer"
+                        />
+                        <label htmlFor="isPreview" className="text-xs font-bold text-gray-600 cursor-pointer">
+                          Is this a Preview Video? (Can be watched before purchasing)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Select Video File</label>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/x-m4v,video/*"
+                          onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
+                        />
+                        {videoFile && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Select Thumbnail</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
+                        />
+                        {thumbnailFile && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            {thumbnailFile.name} ({(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB)
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <button
+                        onClick={handleUpload}
+                        disabled={!videoFile || !thumbnailFile || uploading || !videoTitle || (selectedSectionId === 'new' && !newSectionTitle) || !selectedSectionId}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Uploading ({uploadProgress.toFixed(0)}%)...
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-5 h-5" />
+                            Upload Media
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-orange-500 transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
+
+                    {uploadError && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 shrink-0" />
+                        {uploadError}
+                      </div>
+                    )}
+
+                    {uploadSuccess && (
+                      <div className="p-6 bg-green-50 border border-green-200 rounded-xl space-y-4">
+                        <div className="flex items-center gap-3 text-green-700">
+                          <CheckCircle className="w-5 h-5 shrink-0" />
+                          <p className="font-bold">{uploadSuccess}</p>
                         </div>
                       </div>
                     )}
-
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Select File</label>
-                    <input
-                      type="file"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors"
-                    />
-                    {file && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-                      </p>
-                    )}
                   </div>
-
-                  <div className="pt-4 border-t border-gray-100">
-                    <button
-                      onClick={handleUpload}
-                      disabled={!file || uploading || (folder === 'full_videos' && (!videoTitle || (selectedSectionId === 'new' && !newSectionTitle)))}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Uploading ({uploadProgress.toFixed(0)}%)...
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="w-5 h-5" />
-                          Upload to S3
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-orange-500 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                  )}
-
-                  {uploadError && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 shrink-0" />
-                      {uploadError}
-                    </div>
-                  )}
-
-                  {uploadSuccess && (
-                    <div className="p-6 bg-green-50 border border-green-200 rounded-xl space-y-4">
-                      <div className="flex items-center gap-3 text-green-700">
-                        <CheckCircle className="w-5 h-5 shrink-0" />
-                        <p className="font-bold">{uploadSuccess}</p>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    {!reviewVideo ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <EyeOff className="w-16 h-16 mb-4 opacity-50" />
+                        <p className="font-medium">No video to review.</p>
+                        <p className="text-sm">Upload a video first to review and publish it.</p>
                       </div>
-                      
-                      {uploadedUrl && (
-                        <div className="bg-white p-3 rounded-lg border border-green-100 flex items-center justify-between gap-4">
-                          <input
-                            type="text"
-                            readOnly
-                            value={uploadedUrl}
-                            className="w-full text-xs text-gray-500 bg-transparent outline-none"
-                          />
-                          <button
-                            onClick={copyToClipboard}
-                            className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-                            title="Copy URL"
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="bg-black rounded-2xl overflow-hidden aspect-video shadow-lg border border-gray-800">
+                          <video 
+                            src={reviewVideo.publicUrl} 
+                            poster={reviewVideo.thumbnailUrl}
+                            controls 
+                            className="w-full h-full object-contain"
                           >
-                            <Copy className="w-4 h-4" />
-                          </button>
+                            Your browser does not support the video tag.
+                          </video>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="text-xl font-black text-gray-900">{reviewVideo.title}</h4>
+                              {reviewVideo.description && (
+                                <p className="text-sm text-gray-600 mt-2">{reviewVideo.description}</p>
+                              )}
+                              <div className="flex items-center gap-3 mt-4">
+                                <span className="text-xs font-bold px-2 py-1 bg-gray-200 text-gray-700 rounded uppercase">
+                                  Section ID: {reviewVideo.sectionId}
+                                </span>
+                                {reviewVideo.isPreview && (
+                                  <span className="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded uppercase">
+                                    Preview Video
+                                  </span>
+                                )}
+                                <span className="text-xs font-bold px-2 py-1 bg-yellow-100 text-yellow-700 rounded uppercase">
+                                  Unpublished
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handlePublishReview}
+                          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-500/20"
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                          Approve and Publish
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
