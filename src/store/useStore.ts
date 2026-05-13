@@ -103,17 +103,14 @@ export const useStore = create<AppState>()(
         isSuperAdmin: user.isSuperAdmin ?? false,
       }),
       logout: () => {
-        // Clear tokens from localStorage
+        // JWTs are in httpOnly cookies — cleared by the backend /auth/logout endpoint.
+        // We only need to clear the lightweight presence cookie and session storage here.
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('caft_access_token');
-          localStorage.removeItem('caft_refresh_token');
-          // Clear the auth cookie used by Next.js middleware
           document.cookie = 'caft_auth=; path=/; max-age=0';
-          // Clear any session storage items
           sessionStorage.removeItem('caft_login_email');
           sessionStorage.removeItem('caft_post_login_redirect');
         }
-        // Set state — Zustand persist will auto-save the logged-out state
+        // Reset Zustand auth state
         set({ user: null, isAuthenticated: false, isAdmin: false, isSuperAdmin: false });
       },
 

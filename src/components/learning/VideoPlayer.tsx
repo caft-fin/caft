@@ -248,15 +248,13 @@ export default function VideoPlayer({ videoId, courseId }: VideoPlayerProps) {
       // ── Exit Detection (page unload / navigation) ───
       const handleBeforeUnload = () => {
         const pos = Math.floor(vid.currentTime);
-        const token = typeof window !== 'undefined' ? localStorage.getItem('caft_access_token') : null;
-        // Use fetch with keepalive for reliability during unload (supports auth headers)
+        // Use credentials: 'include' so the httpOnly caft_access cookie is sent automatically.
+        // keepalive keeps the request alive after the page unloads.
         try {
           fetch(`/api/dp/video/${videoId}/event`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
               eventType: 'EXIT',
               positionSeconds: pos,

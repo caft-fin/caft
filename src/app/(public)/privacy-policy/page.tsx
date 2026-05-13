@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
           { title: '3. Information Sharing', content: 'We do not sell your personal information. We may share your information with service providers who assist us in operating our platform, payment processors, and as required by law. All third parties are bound by contractual obligations to protect your data.' },
           { title: '4. Data Security', content: 'We implement industry-standard security measures including AES-256 encryption at rest, TLS 1.3 encryption in transit, regular security audits, and strict access controls. We maintain SOC 2 compliance and conduct regular penetration testing.' },
           { title: '5. Your Rights', content: 'You have the right to access, update, or delete your personal information at any time. You may also request data portability, restrict processing, or withdraw consent for marketing communications by contacting us or through your account settings.' },
-          { title: '6. Contact Us', content: 'If you have questions about this Privacy Policy, please contact us at privacy@caftfin.com or write to CAFT Financial Services, India.' },
+          { title: '6. Contact Us', content: 'If you have questions about this Privacy Policy, please contact us at support@caftfin.com or write to CAFT Financial Services, Hyderabad, Telangana, India 500085.' },
         ],
       }}
     />

@@ -23,60 +23,54 @@ interface PaginatedApiResponse<T = unknown> {
   };
 }
 
-/** Get stored tokens */
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('caft_access_token');
-}
+// ── Token storage ─────────────────────────────────────────
+// JWT tokens are stored in httpOnly cookies set by the backend (not accessible to JS).
+// The only client-side cookie is `caft_auth=1` — a non-sensitive presence flag used
+// by the Next.js middleware to decide whether to redirect unauthenticated users.
 
-function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('caft_refresh_token');
-}
-
-export function setTokens(access: string, refresh: string) {
-  localStorage.setItem('caft_access_token', access);
-  localStorage.setItem('caft_refresh_token', refresh);
-  // Set a lightweight auth cookie for Next.js middleware route protection
+/**
+ * Call after successful login to set the presence cookie that Next.js middleware reads.
+ * The actual JWTs (caft_access, caft_refresh) are in httpOnly cookies set by the backend.
+ */
+export function setTokens() {
+  if (typeof document === 'undefined') return;
   document.cookie = 'caft_auth=1; path=/; max-age=604800; SameSite=Lax';
 }
 
+/** Call on logout to clear the presence cookie. */
 export function clearTokens() {
-  localStorage.removeItem('caft_access_token');
-  localStorage.removeItem('caft_refresh_token');
-  // Clear the auth cookie
+  if (typeof document === 'undefined') return;
   document.cookie = 'caft_auth=; path=/; max-age=0';
 }
 
-/** Attempt to refresh the access token */
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
-
+/**
+ * Attempt to refresh the access token.
+ * The backend reads the caft_refresh httpOnly cookie automatically (credentials: 'include').
+ * Returns true if the backend set a new caft_access cookie; false otherwise.
+ */
+async function refreshAccessToken(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
     });
     if (!res.ok) {
       clearTokens();
-      return null;
+      return false;
     }
-    const json: ApiResponse<{ accessToken: string }> = await res.json();
-    const newToken = json.data.accessToken;
-    localStorage.setItem('caft_access_token', newToken);
-    return newToken;
+    // Backend has set a new caft_access cookie — no client-side storage needed
+    return true;
   } catch {
     clearTokens();
-    return null;
+    return false;
   }
 }
 
 /**
  * Core fetch wrapper with:
- * - Auto-attaches Authorization header
- * - Auto-refreshes token on 401
+ * - credentials: 'include' so the browser sends the httpOnly caft_access cookie
+ * - Auto-refreshes on 401 (calls /auth/refresh which rotates the cookie server-side)
  * - Typed response
  */
 async function apiFetch<T>(
@@ -84,25 +78,25 @@ async function apiFetch<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<ApiResponse<T>> {
-  const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
+    credentials: 'include', // send httpOnly auth cookies automatically
   });
 
-  // If 401 and we haven't retried, try refreshing the token
+  // If 401 and we haven't retried, ask the backend to rotate the access cookie
   if (res.status === 401 && retry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Retry with the new caft_access cookie the backend just set
       return apiFetch<T>(path, options, false);
     }
-    // Redirect to login if refresh failed
+    // Refresh failed — clear presence cookie and redirect to login
     if (typeof window !== 'undefined') {
       clearTokens();
       window.location.href = '/login';
@@ -117,28 +111,28 @@ async function apiFetch<T>(
   return json as ApiResponse<T>;
 }
 
-/** Paginated fetch wrapper with token refresh support */
+/** Paginated fetch wrapper — same cookie-based auth as apiFetch */
 async function apiFetchPaginated<T>(
   path: string,
   options: RequestInit = {},
   retry = true,
 ): Promise<PaginatedApiResponse<T>> {
-  const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
-  // If 401 and we haven't retried, try refreshing the token
   if (res.status === 401 && retry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
       return apiFetchPaginated<T>(path, options, false);
     }
-    // Redirect to login if refresh failed
     if (typeof window !== 'undefined') {
       clearTokens();
       window.location.href = '/login';
@@ -173,34 +167,22 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email }),
       }),
+    // Tokens are now in httpOnly cookies set by the backend — not in the response body
     verifyOtp: (email: string, otpCode: string) =>
-      apiFetch<{
-        user: AuthUser;
-        accessToken: string;
-        refreshToken: string;
-      }>('/auth/verify-otp', {
+      apiFetch<{ user: AuthUser }>('/auth/verify-otp', {
         method: 'POST',
         body: JSON.stringify({ email, otp: otpCode }),
       }),
     adminLogin: (email: string, password: string) =>
-      apiFetch<{
-        user: AuthUser;
-        accessToken: string;
-        refreshToken: string;
-      }>('/auth/admin/login', {
+      apiFetch<{ user: AuthUser }>('/auth/admin/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
     refresh: () => refreshAccessToken(),
     logout: async () => {
-      const refreshToken = getRefreshToken();
-      if (refreshToken) {
-        await apiFetch('/auth/logout', {
-          method: 'POST',
-          body: JSON.stringify({ refreshToken }),
-        }).catch(() => {});
-      }
-      clearTokens();
+      // caft_refresh cookie is sent automatically (credentials: 'include')
+      await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
+      clearTokens(); // clears the presence cookie
     },
   },
 
@@ -448,6 +430,12 @@ export const api = {
     getCourse: (courseId: string) => apiFetch<any>(`/dp/course/${courseId}`),
     getCourseBySlug: (slug: string) => apiFetch<any>(`/dp/course/slug/${slug}`),
 
+    // Direct course enrollment (no Plan required)
+    enrollCourse: (courseId: string) =>
+      apiFetch<{ enrolled: boolean; paymentId?: string; orderId?: string; amount?: number; currency?: string }>(`/dp/course/${courseId}/purchase`, { method: 'POST' }),
+    verifyCourseEnrollment: (courseId: string, data: { paymentId: string; razorpayPaymentId: string; razorpayOrderId: string; razorpaySignature: string }) =>
+      apiFetch<{ message: string }>(`/dp/course/${courseId}/purchase/verify`, { method: 'POST', body: JSON.stringify(data) }),
+
     // User dashboard
     getDashboard: () => apiFetch<any>('/dp/user/dashboard'),
 
@@ -481,10 +469,15 @@ export const api = {
         apiFetch<any>(`/dp/admin/sections/${sectionId}`, { method: 'DELETE' }),
       createVideo: (data: { courseId: string; sectionId: string; title: string; description?: string; s3Key: string; durationSeconds?: number; isPreview?: boolean; previewDurationSeconds?: number; orderIndex?: number; thumbnailUrl?: string }) =>
         apiFetch<any>('/dp/admin/videos', { method: 'POST', body: JSON.stringify(data) }),
-      updateVideo: (videoId: string, data: { title?: string; description?: string; durationSeconds?: number; isPreview?: boolean; previewDurationSeconds?: number; orderIndex?: number; isPublished?: boolean; thumbnailUrl?: string }) =>
+      updateVideo: (videoId: string, data: { title?: string; description?: string; durationSeconds?: number; isPreview?: boolean; previewDurationSeconds?: number; previewStartSeconds?: number; previewEndSeconds?: number; orderIndex?: number; isPublished?: boolean; thumbnailUrl?: string }) =>
         apiFetch<any>(`/dp/admin/videos/${videoId}`, { method: 'PUT', body: JSON.stringify(data) }),
       deleteVideo: (videoId: string) =>
         apiFetch<any>(`/dp/admin/videos/${videoId}`, { method: 'DELETE' }),
+      /** Admin preview: signed stream URL for any video (bypasses enrollment check) */
+      getVideoStream: (videoId: string) =>
+        apiFetch<{ streamUrl: string; thumbnailUrl?: string | null; title: string; durationSeconds: number }>(
+          `/dp/admin/videos/${videoId}/stream`
+        ),
       platformMetrics: () => apiFetch<any>('/dp/admin/analytics/platform'),
       videoAnalytics: (videoId: string) => apiFetch<any>(`/dp/admin/analytics/video/${videoId}`),
       courseUsers: (courseId: string) => apiFetch<any>(`/dp/admin/analytics/course/${courseId}/users`),

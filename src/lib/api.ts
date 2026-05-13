@@ -60,9 +60,10 @@ const MOCK_PRICING_PLANS: PricingPlan[] = [
 ];
 
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: "1", title: "HDFC Top 100 Fund", subtitle: "Mutual Fund SIP • Today", amount: 15000, status: "Success", icon: "account_balance", type: "debit" },
-  { id: "2", title: "Digital Gold Purchase", subtitle: "Commodity • Yesterday", amount: 5000, status: "Success", icon: "grid_goldenratio", type: "debit" },
-  { id: "3", title: "Dividend Payout", subtitle: "Stock Income • 2 days ago", amount: 1240.5, status: "Settled", icon: "download", type: "credit" },
+  // icon values must use Lucide names — matched in the switch in dashboard/page.tsx
+  { id: "1", title: "HDFC Top 100 Fund", subtitle: "Mutual Fund SIP • Today", amount: 15000, status: "Success", icon: "Landmark", type: "debit" },
+  { id: "2", title: "Digital Gold Purchase", subtitle: "Commodity • Yesterday", amount: 5000, status: "Success", icon: "Gem", type: "debit" },
+  { id: "3", title: "Dividend Payout", subtitle: "Stock Income • 2 days ago", amount: 1240.5, status: "Settled", icon: "Download", type: "credit" },
 ];
 
 // ── Public API Functions ──────────────────────────────
@@ -115,9 +116,9 @@ export async function getDashboardStats() {
   } catch {
     console.warn('Backend unavailable, using mock stats');
     return {
-      totalValue: 1284930.00,
-      profitLoss: 12400.00,
-      allocation: { domesticEquity: 65, foreignAssets: 25, digitalGold: 10 }
+      totalValue: 0,
+      profitLoss: 0,
+      allocation: { domesticEquity: 0, foreignAssets: 0, digitalGold: 0 }
     };
   }
 }

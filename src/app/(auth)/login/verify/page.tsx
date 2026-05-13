@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ShieldCheck, Loader2 } from 'lucide-react';
-import { api, ApiError, setTokens } from '@/lib/apiClient';
+import { api, ApiError, setTokens } from '@/lib/apiClient'; // setTokens sets the presence cookie only
 import { useStore } from '@/store/useStore';
 
 export default function LoginVerifyPage() {
@@ -73,8 +73,9 @@ export default function LoginVerifyPage() {
 
     try {
       const res = await api.auth.verifyOtp(email, otpCode);
-      const { user, accessToken, refreshToken } = res.data;
-      setTokens(accessToken, refreshToken);
+      const { user } = res.data;
+      // Tokens are in httpOnly cookies set by the backend — just set the presence cookie
+      setTokens();
       login({
         id: user.id,
         name: user.name,

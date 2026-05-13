@@ -38,9 +38,6 @@ export function Header() {
           <Link href="/pricing" className={getLinkClass('/pricing')}>
             Pricing
           </Link>
-          <Link href="/analytics" className={getLinkClass('/analytics')}>
-            Analytics
-          </Link>
           <Link href="/algo-indicators" className={getLinkClass('/algo-indicators')}>
             Courses & Tools
           </Link>

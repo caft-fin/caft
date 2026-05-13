@@ -53,11 +53,16 @@ export default function PricingPage() {
       }
     }).catch(() => { }).finally(() => setLoading(false));
 
-    // Fetch user access data (only if authenticated)
+    // Fetch user access data (only if authenticated).
+    // Use raw fetch to avoid the apiClient's global 401→/login redirect,
+    // which fires when the access token has silently expired on a public page.
     if (isAuthenticated) {
-      api.purchases.myAccess().then(res => {
-        if (res.data?.accessiblePlanIds) setAccessiblePlanIds(res.data.accessiblePlanIds);
-      }).catch(() => {});
+      fetch('/api/purchases/my-access', { credentials: 'include' })
+        .then(r => (r.ok ? r.json() : Promise.resolve({ data: null })))
+        .then((body) => {
+          if (body?.data?.accessiblePlanIds) setAccessiblePlanIds(body.data.accessiblePlanIds);
+        })
+        .catch(() => {});
     }
   }, [isAuthenticated]);
 

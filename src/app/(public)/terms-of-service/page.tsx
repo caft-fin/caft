@@ -16,7 +16,7 @@ export default function TermsOfServicePage() {
           { title: '5. Intellectual Property', content: 'All content, trademarks, logos, and intellectual property on the platform are owned by CAFT Financial Services. You may not reproduce, distribute, or create derivative works without our express written permission.' },
           { title: '6. Limitation of Liability', content: 'CAFT Financial is not liable for any investment losses, market fluctuations, or financial outcomes resulting from the use of our services. Past performance does not guarantee future results.' },
           { title: '7. Termination', content: 'We reserve the right to suspend or terminate your account for violation of these terms. You may close your account at any time by contacting support.' },
-          { title: '8. Contact', content: 'For questions regarding these Terms of Service, contact us at legal@caftfin.com.' },
+          { title: '8. Contact', content: 'For questions regarding these Terms of Service, contact us at support@caftfin.com.' },
         ],
       }}
     />

@@ -23,8 +23,9 @@ export default function AdminLoginPage() {
 
     try {
       const res = await api.auth.adminLogin(email, password);
-      const { user, accessToken, refreshToken } = res.data;
-      setTokens(accessToken, refreshToken);
+      const { user } = res.data;
+      // Tokens are in httpOnly cookies set by the backend — just set the presence cookie
+      setTokens();
       login({
         id: user.id,
         name: user.name,

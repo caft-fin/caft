@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BarChart2, Database, Menu } from 'lucide-react';
+import { Home, Database, GraduationCap, Menu } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 export function DashboardMobileNav() {
@@ -11,8 +11,8 @@ export function DashboardMobileNav() {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
     { name: 'Manage', href: '/dashboard/management', icon: Database },
+    { name: 'Learning', href: '/dashboard/learning', icon: GraduationCap },
     { name: 'More', href: '#', icon: Menu, isButton: true },
   ];
 

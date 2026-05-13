@@ -6,6 +6,7 @@ import { api } from '@/lib/apiClient';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PlayCircle, CheckCircle, Lock, Loader2, Award, Download, Star, MessageSquare } from 'lucide-react';
+import { MarkdownBody, stripMarkdown } from '@/components/ui/MarkdownRenderer';
 
 export default function CourseOverviewPage() {
   const { courseId } = useParams();
@@ -112,7 +113,11 @@ export default function CourseOverviewPage() {
               </div>
             )}
             <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
-            <p className="text-gray-400 mb-8 max-w-lg line-clamp-3">{course.description}</p>
+            {course.description && (
+              <p className="text-gray-400 mb-8 max-w-lg text-sm leading-relaxed line-clamp-2">
+                {stripMarkdown(course.description)}
+              </p>
+            )}
             
             <div className="flex items-center space-x-4">
               {nextVideo ? (
@@ -155,6 +160,14 @@ export default function CourseOverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* About this Course */}
+      {course.description && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-7">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">About this Course</h2>
+          <MarkdownBody text={course.description} className="text-gray-600 text-sm leading-relaxed" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Curriculum */}

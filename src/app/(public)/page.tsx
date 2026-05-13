@@ -32,7 +32,9 @@ export default function LandingPage() {
   }, []);
 
   const heroMediaType = settings.heroMediaType || 'image';
-  const heroImageUrl = settings.heroImageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPWflEdFmq-FdXTJaUewd_lkgKdgwgkibu3V5UkqiFXBnTXcOCSm4j7Mp_vP8bBivkfwLV445WuaCMLn68rgkNebUnGWbo0_c7OhAZMzCg3iygPIh20BFOvdlO2_BsjrYGFas3aAqmSO7bFOBDvARLKH118fOXtPUlwXODGjl5MVuxdhrHT05-q-VizWJ9ZdTyCjiI01bJwg7eibNXR88lFTsYegUWpZvk8l8w5hzjlOA44ZyAdYBr6jKTfh2Ya7BpFNtRazDzi4U';
+  // Empty string when no heroImageUrl is configured — admin must set one via Settings.
+  // Never fall back to an external CDN domain (lh3.googleusercontent.com, etc.)
+  const heroImageUrl = settings.heroImageUrl || '';
   const heroVideoUrl = settings.heroVideoUrl || '';
 
   // Banner
@@ -112,7 +114,7 @@ export default function LandingPage() {
                       </div>
                     </button>
                   )
-                ) : (
+                ) : heroImageUrl ? (
                   <Image
                     alt="Professional woman looking optimistic"
                     className="rounded-2xl object-cover"
@@ -120,6 +122,10 @@ export default function LandingPage() {
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     src={heroImageUrl}
                   />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-indigo-100 rounded-2xl flex items-center justify-center">
+                    <TrendingUp className="w-24 h-24 text-orange-300 opacity-40" />
+                  </div>
                 )}
               </div>
               <div className="absolute -bottom-6 -left-6 glass-card p-6 rounded-2xl shadow-xl max-w-xs animate-bounce z-20">

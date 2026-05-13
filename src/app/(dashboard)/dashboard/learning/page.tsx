@@ -107,9 +107,12 @@ export default function LearningDashboardPage() {
           {data?.enrolledCourses?.length === 0 ? (
             <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-8 text-center">
               <p className="text-gray-500">You haven&apos;t enrolled in any courses yet.</p>
-              <button className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+              <Link
+                href="/algo-indicators"
+                className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
                 Browse Catalog
-              </button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">

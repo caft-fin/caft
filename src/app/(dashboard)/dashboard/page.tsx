@@ -9,19 +9,20 @@ import {
   PieChart, Activity
 } from 'lucide-react';
 
+// icon values stored in the DB and mock data use Lucide component names (e.g. "Landmark")
 const getTransactionIcon = (icon: string) => {
   switch (icon) {
-    case 'account_balance': return <Landmark className="w-5 h-5" />;
-    case 'grid_goldenratio': return <Gem className="w-5 h-5" />;
-    case 'download': return <Download className="w-5 h-5" />;
+    case 'Landmark': return <Landmark className="w-5 h-5" />;
+    case 'Gem': return <Gem className="w-5 h-5" />;
+    case 'Download': return <Download className="w-5 h-5" />;
     default: return <Wallet className="w-5 h-5" />;
   }
 };
 
 const iconBgClass: Record<string, string> = {
-  account_balance: 'bg-blue-50 text-blue-600',
-  grid_goldenratio: 'bg-orange-50 text-orange-600',
-  download: 'bg-green-50 text-green-600',
+  Landmark: 'bg-blue-50 text-blue-600',
+  Gem: 'bg-orange-50 text-orange-600',
+  Download: 'bg-green-50 text-green-600',
 };
 
 export default function DashboardPage() {
@@ -50,8 +51,9 @@ export default function DashboardPage() {
       }
     }
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Zustand action references (updateDashboardStats, setTransactions) are stable
+  // across renders — including them in the dep array is correct and safe.
+  }, [updateDashboardStats, setTransactions]);
 
   if (loading && dashboardStats.totalValue === 0) {
     return (
@@ -169,13 +171,14 @@ export default function DashboardPage() {
               <>
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div className="p-4 bg-gray-50/80 rounded-xl border border-gray-100">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Total Invested</p>
-                    <p className="text-xl font-bold text-gray-900">₹{formatCurrency(dashboardStats.totalValue * 0.8).replace('₹', '')}</p>
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Current Value</p>
+                    <p className="text-xl font-bold text-gray-900">{formatCurrency(dashboardStats.totalValue)}</p>
                   </div>
                   <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-100">
-                    <p className="text-xs text-orange-600 font-semibold uppercase tracking-wider mb-1">Expected Wealth</p>
-                    <p className="text-xl font-bold text-orange-700">₹{formatCurrency(dashboardStats.totalValue * 1.93).replace('₹', '')}</p>
-                    <p className="text-xs text-orange-600 mt-1 font-medium">Est. Returns: ₹{formatCurrency(dashboardStats.totalValue * 1.13).replace('₹', '')}</p>
+                    <p className="text-xs text-orange-600 font-semibold uppercase tracking-wider mb-1">Illustrative 5Y Value</p>
+                    {/* 12% CAGR × 5 years = 1.12^5 ≈ 1.762 — indicative only */}
+                    <p className="text-xl font-bold text-orange-700">{formatCurrency(dashboardStats.totalValue * 1.762)}</p>
+                    <p className="text-xs text-orange-600 mt-1 font-medium">Illustrative at 12% CAGR</p>
                   </div>
                 </div>
 
@@ -190,13 +193,11 @@ export default function DashboardPage() {
                       </defs>
                       <path d="M0,100 L0,80 Q30,60 60,35 T100,0 L100,100 Z" fill="url(#gradient)" />
                       <path d="M0,80 Q30,60 60,35 T100,0" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
-                      
                       <circle cx="0" cy="80" r="3" fill="#fff" stroke="#f97316" strokeWidth="2" />
-                      <circle cx="60" cy="35" r="4" fill="#fff" stroke="#f97316" strokeWidth="2" className="shadow-lg" />
+                      <circle cx="60" cy="35" r="4" fill="#fff" stroke="#f97316" strokeWidth="2" />
                       <circle cx="100" cy="0" r="4" fill="#f97316" stroke="#fff" strokeWidth="2" />
-                      
-                      <rect x="48" y="15" width="24" height="12" rx="4" fill="#fff" stroke="#f97316" strokeWidth="1" />
-                      <text x="60" y="23" fontSize="6" fill="#f97316" fontWeight="bold" textAnchor="middle">+93%</text>
+                      <rect x="44" y="15" width="32" height="12" rx="4" fill="#fff" stroke="#f97316" strokeWidth="1" />
+                      <text x="60" y="23" fontSize="5.5" fill="#f97316" fontWeight="bold" textAnchor="middle">Illustrative</text>
                     </svg>
                   </div>
                   <div className="flex justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2">
@@ -205,6 +206,11 @@ export default function DashboardPage() {
                     <span>Year 5</span>
                   </div>
                 </div>
+
+                {/* SEBI-required forward-looking disclaimer */}
+                <p className="text-[10px] text-gray-400 mt-3 leading-relaxed">
+                  Projections are illustrative only and assume a 12% annual return. Mutual fund investments are subject to market risks. Past performance is not indicative of future results. Please read all scheme-related documents carefully before investing.
+                </p>
               </>
             )}
           </div>

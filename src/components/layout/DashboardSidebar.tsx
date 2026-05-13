@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Database, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, Database, GraduationCap, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { api } from '@/lib/apiClient';
 
@@ -15,9 +15,8 @@ export function DashboardSidebar() {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Management', href: '/dashboard/management', icon: Database },
-
+    { name: 'Learning', href: '/dashboard/learning', icon: GraduationCap },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 

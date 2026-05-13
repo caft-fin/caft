@@ -25,12 +25,12 @@ function GoogleCallbackContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const accessToken = searchParams.get('accessToken');
-    const refreshToken = searchParams.get('refreshToken');
+    // The backend sets httpOnly caft_access and caft_refresh cookies before redirecting here.
+    // We only receive the non-sensitive user object in the URL to populate Zustand state.
     const userStr = searchParams.get('user');
 
-    if (!accessToken || !refreshToken || !userStr) {
-      setError('Missing authentication data from Google. Please try again.');
+    if (!userStr) {
+      setError('Missing user data from Google login. Please try again.');
       setTimeout(() => router.replace('/login'), 3000);
       return;
     }
@@ -38,10 +38,10 @@ function GoogleCallbackContent() {
     try {
       const user = JSON.parse(userStr);
 
-      // Store tokens (sets localStorage + auth cookie)
-      setTokens(accessToken, refreshToken);
+      // Set the presence cookie for Next.js middleware route protection
+      setTokens();
 
-      // Update Zustand store
+      // Populate Zustand auth state
       login(user);
 
       // Redirect to dashboard

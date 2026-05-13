@@ -40,16 +40,16 @@ export default function AboutPage() {
             <h2 className="font-headline-md text-2xl mb-4">Contact Information</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <MapPin className="text-primary w-5 h-5" />
-                <p className="text-on-surface-variant">123 Financial District, Tech Hub, NY 10001</p>
+                <MapPin className="text-primary w-5 h-5 shrink-0" />
+                <p className="text-on-surface-variant">Hyderabad, Telangana, India 500085</p>
               </div>
               <div className="flex items-center gap-4">
-                <Mail className="text-primary w-5 h-5" />
-                <p className="text-on-surface-variant">support@caftfinancial.com</p>
+                <Mail className="text-primary w-5 h-5 shrink-0" />
+                <a href="mailto:support@caftfin.com" className="text-on-surface-variant hover:text-primary transition-colors">support@caftfin.com</a>
               </div>
               <div className="flex items-center gap-4">
-                <Phone className="text-primary w-5 h-5" />
-                <p className="text-on-surface-variant">+1 (800) 123-4567</p>
+                <Phone className="text-primary w-5 h-5 shrink-0" />
+                <a href="tel:+919398350409" className="text-on-surface-variant hover:text-primary transition-colors">+91 93983 50409</a>
               </div>
             </div>
           </GlassCard>
